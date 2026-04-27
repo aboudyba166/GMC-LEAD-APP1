@@ -6,6 +6,8 @@ export type SheetColumnMapping = {
   fullName: string;
   phone: string;
   serviceRequired: string;
+  /** Column letter for the date/time the lead was received in the source sheet */
+  receivedAt?: string;
   /** Column letter for historical status/feedback; empty = not mapped (new leads default to "New Lead") */
   existingStatus?: string;
 };
@@ -105,6 +107,7 @@ export function tryParseSheetConfiguration(x: unknown): SheetConfiguration | nul
     typeof c.fullName !== "string" ||
     typeof c.phone !== "string" ||
     typeof c.serviceRequired !== "string" ||
+    (c.receivedAt !== undefined && typeof c.receivedAt !== "string") ||
     (c.existingStatus !== undefined && typeof c.existingStatus !== "string")
   ) {
     return null;
@@ -118,6 +121,9 @@ export function tryParseSheetConfiguration(x: unknown): SheetConfiguration | nul
     phone: c.phone,
     serviceRequired: c.serviceRequired,
   };
+  if (typeof c.receivedAt === "string") {
+    columns.receivedAt = c.receivedAt;
+  }
   if (typeof c.existingStatus === "string") {
     columns.existingStatus = c.existingStatus;
   }

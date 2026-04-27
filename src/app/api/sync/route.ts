@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
         sourceId: r.sourceId,
         initialStatus: r.initialStatus,
         sheetRow: r.sheetRow,
+        createdAt: (r as any).createdAt,
       })),
       !!(body as any).isAutoSync
     );

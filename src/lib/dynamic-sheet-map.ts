@@ -14,17 +14,20 @@ export function mapRowWithConfiguration(
   name: string;
   phone: string;
   serviceRequired: string;
+  receivedAtRaw: string;
   existingStatusRaw: string;
   statusColumnMapped: boolean;
 } {
   const c = config.columns;
   const statusLetter = (c.existingStatus ?? "").trim();
+  const receivedAtLetter = (c.receivedAt ?? "").trim();
   const statusColumnMapped = statusLetter.length > 0;
   return {
     campaign: getCellByLetter(row, c.campaign),
     name: getCellByLetter(row, c.fullName),
     phone: getCellByLetter(row, c.phone),
     serviceRequired: getCellByLetter(row, c.serviceRequired),
+    receivedAtRaw: receivedAtLetter ? getCellByLetter(row, receivedAtLetter) : "",
     existingStatusRaw: statusColumnMapped ? getCellByLetter(row, statusLetter) : "",
     statusColumnMapped,
   };

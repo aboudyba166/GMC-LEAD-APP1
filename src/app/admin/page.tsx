@@ -255,10 +255,11 @@ export default function AdminPage() {
                       [
                         { key: "campaign", label: "Campaign data (optional)", emptyOk: true },
                         { key: "fullName", label: "Full name", emptyOk: false },
-                        { key: "phone", label: "Phone number", emptyOk: false },
-                        { key: "serviceRequired", label: "Service required", emptyOk: false },
-                        {
-                          key: "existingStatus",
+                    { key: "phone", label: "Phone number", emptyOk: false },
+                    { key: "serviceRequired", label: "Service required", emptyOk: false },
+                    { key: "receivedAt", label: "Received date/time (optional)", emptyOk: true },
+                    {
+                      key: "existingStatus",
                           label: "Existing status / feedback (optional)",
                           emptyOk: true,
                         },

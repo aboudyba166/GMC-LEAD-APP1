@@ -259,6 +259,8 @@ export type SyncIngestionRow = {
   initialStatus: LeadStatus;
   /** 1-based row in the sheet tab; used so newest = highest row, not first row. */
   sheetRow: number;
+  /** Optional override for creation time from source sheet */
+  createdAt?: string;
 };
 
 /** Last row in the batch wins for the same phone (higher sheet row / later connection). */
@@ -294,6 +296,9 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
     // Check if this EXACT phone + service combination already exists
     const existing = d.prepare("SELECT id FROM leads WHERE phone_key = ?").get(uniqueEntryKey) as { id: string } | undefined;
     
+    // Use source createdAt if provided, else use now
+    const leadCreatedAt = r.createdAt || now;
+
     if (existing) {
       // If it exists, just update the data (like campaign or row number) but don't create a new lead
       d.prepare(`
@@ -329,7 +334,7 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
       r.initialStatus,
       "",
       r.sourceId,
-      now,
+      leadCreatedAt,
       now,
       now,
       r.sheetRow

@@ -129,6 +129,20 @@ function parseGrid(
     if (rowLooksEmptyDynamic(lead) || !normalizePhoneKey(lead.phoneNumber)) continue;
     const initialStatus = resolveInitialStatus(raw.existingStatusRaw, raw.statusColumnMapped);
     const sheetRow = r + 1;
+    
+    // Parse receivedAt from sheet if available, otherwise use now
+    let createdAt = new Date().toISOString();
+    if (raw.receivedAtRaw && raw.receivedAtRaw.trim()) {
+      try {
+        const parsed = new Date(raw.receivedAtRaw);
+        if (!isNaN(parsed.getTime())) {
+          createdAt = parsed.toISOString();
+        }
+      } catch {
+        /* fallback to now */
+      }
+    }
+
     const k = normalizePhoneKey(lead.phoneNumber);
     byPhone.set(k, {
       lead,
@@ -136,6 +150,7 @@ function parseGrid(
       sourceLabel: config.name || config.id,
       initialStatus,
       sheetRow,
+      createdAt,
     });
   }
   return Array.from(byPhone.values());

@@ -174,30 +174,53 @@ export default function AdminPage() {
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
-        const lines = text.split("\n").filter(l => l.trim());
+        // Split by lines and filter out empty ones
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
         if (lines.length < 2) throw new Error("Invalid CSV format");
 
-        const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
         const newConfigs: SheetConfiguration[] = [];
 
+        // Skip header row
         for (let i = 1; i < lines.length; i++) {
-          // Simple CSV parser for quoted values
-          const values = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)?.map(v => v.replace(/^"|"$/g, "").replace(/""/g, '"')) || [];
-          if (values.length < 4) continue;
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          // Robust CSV parser that handles quoted values with commas
+          const values: string[] = [];
+          let current = '';
+          let inQuotes = false;
+          
+          for (let charIndex = 0; charIndex < line.length; charIndex++) {
+            const char = line[charIndex];
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              values.push(current.trim());
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          values.push(current.trim());
+
+          // Clean up quotes and escaped quotes
+          const cleanValues = values.map(v => v.replace(/^"|"$/g, "").replace(/""/g, '"'));
+
+          if (cleanValues.length < 4) continue;
 
           const config: SheetConfiguration = {
             id: nanoid(),
-            name: values[0] || "Imported Connection",
-            spreadsheetId: values[1] || "",
-            tabName: values[2] || "Sheet1",
-            sheetGid: values[3] ? Number(values[3]) : undefined,
+            name: cleanValues[0] || "Imported Connection",
+            spreadsheetId: cleanValues[1] || "",
+            tabName: cleanValues[2] || "Sheet1",
+            sheetGid: cleanValues[3] ? Number(cleanValues[3]) : undefined,
             columns: {
-              campaign: values[4] || "A",
-              fullName: values[5] || "B",
-              phone: values[6] || "C",
-              serviceRequired: values[7] || "D",
-              receivedAt: values[8] || "W",
-              existingStatus: values[9] || ""
+              campaign: cleanValues[4] || "A",
+              fullName: cleanValues[5] || "B",
+              phone: cleanValues[6] || "C",
+              serviceRequired: cleanValues[7] || "D",
+              receivedAt: cleanValues[8] || "W",
+              existingStatus: cleanValues[9] || ""
             }
           };
           newConfigs.push(config);
@@ -207,10 +230,12 @@ export default function AdminPage() {
           if (window.confirm(`Import ${newConfigs.length} connections? This will replace your current list.`)) {
             reset({ configs: newConfigs });
             setIsLocked(false);
+            setExpandedIndex(null);
             alert("Connections imported! Click 'Save connections' to keep them.");
           }
         }
       } catch (err) {
+        console.error(err);
         alert("Error importing CSV. Please check the file format.");
       }
       if (fileInputRef.current) fileInputRef.current.value = "";

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCallback, useEffect, useState, type ElementType } from "react";
 import {
   BarChart3,
@@ -267,15 +268,28 @@ export function LeadCommandCenter() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 selection:bg-sky-100 dark:selection:bg-sky-900/40">
       <AppNav />
-      <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
+      <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95 shadow-sm">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight sm:text-xl">Lead Command Center</h1>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Map sheets in Admin, then manual sync. Deduplication by phone; newest first.
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-zinc-900 p-1 shadow-inner dark:bg-white">
+              <Image
+                src="/assets/logo.png"
+                alt="GMC Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-xl">
+                Gardenia Medical <span className="text-sky-600 dark:text-sky-400">Centre</span>
+              </h1>
+              <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+                Lead Command Center
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2 py-1.5 dark:border-zinc-800 dark:bg-zinc-900">
@@ -389,8 +403,8 @@ export function LeadCommandCenter() {
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search by name, phone, service, or note…"
               className={cn(
-                "w-full rounded-lg border border-zinc-200 bg-white py-2 pl-9 pr-3 text-sm",
-                "focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500",
+                "w-full rounded-lg border border-zinc-200 bg-white py-2 pl-9 pr-3 text-sm transition-all",
+                "focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/10",
                 "dark:border-zinc-700 dark:bg-zinc-900"
               )}
             />
@@ -494,13 +508,16 @@ function MetricCard({
   sub: string;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60">
+    <div className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/60">
+      <div className="absolute -right-2 -top-2 opacity-[0.03] transition-transform group-hover:scale-110">
+        <Icon className="h-16 w-16" />
+      </div>
       <div className="mb-1 flex items-center gap-2 text-zinc-500">
-        <Icon className="h-4 w-4" />
-        <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
+        <Icon className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+        <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
       </div>
       <p className="text-2xl font-bold tabular-nums text-zinc-900 dark:text-zinc-50">{value}</p>
-      <p className="text-xs text-zinc-500">{sub}</p>
+      <p className="text-[10px] text-zinc-400 dark:text-zinc-500">{sub}</p>
     </div>
   );
 }

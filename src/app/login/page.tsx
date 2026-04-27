@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useAuth } from "@/components/auth-provider";
 import { Shield, Lock, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,15 +23,23 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
       <div className="w-full max-w-md space-y-8 rounded-2xl border border-zinc-200 bg-white p-8 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900/30">
-            <Shield className="h-8 w-8 text-sky-600 dark:text-sky-400" />
+          <div className="text-center">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-zinc-900 p-2 shadow-xl dark:bg-white">
+              <Image
+                src="/assets/logo.png"
+                alt="GMC Logo"
+                width={64}
+                height={64}
+                className="object-contain"
+              />
+            </div>
+            <h2 className="mt-6 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+              Gardenia Medical <span className="text-sky-600 dark:text-sky-400">Centre</span>
+            </h2>
+            <p className="mt-2 text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+              Lead Command Center Login
+            </p>
           </div>
-          <h2 className="mt-6 text-3xl font-bold tracking-tight">Gardenia Medical</h2>
-          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-            Lead Command Center Login
-          </p>
-        </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4 rounded-md shadow-sm">

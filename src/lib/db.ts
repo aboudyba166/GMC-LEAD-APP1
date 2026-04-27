@@ -4,6 +4,7 @@ import path from "node:path";
 import { nanoid } from "nanoid";
 import { normalizePhoneKey } from "./phone-dedupe";
 import { LEAD_STATUS, normalizeStatusFromDb, type LeadStatus } from "./lead-status";
+import { type SheetConfiguration } from "./sheet-config";
 import type { LeadRecord, StandardLeadRow, YesNo } from "./types";
 
 // Next.js bundles this file under .next/server/chunks; `import.meta.url` there points at the

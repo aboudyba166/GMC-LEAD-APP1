@@ -35,7 +35,8 @@ function initialFormConfigs(): SheetConfiguration[] {
 export default function AdminPage() {
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [showSavedBanner, setShowSavedBanner] = useState(false);
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [isLocked, setIsLocked] = useState(true);
   const savedBannerTid = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { control, register, handleSubmit, reset, setValue, formState } = useForm<FormValues>({
@@ -47,8 +48,16 @@ export default function AdminPage() {
 
   useEffect(() => {
     removeLegacySheetConfigurationKey();
-    reset({ configs: initialFormConfigs() });
+    const configs = initialFormConfigs();
+    reset({ configs });
     setLastSaved(getLastSheetConfigSavedDisplay());
+    
+    // If we have saved configs, lock them by default
+    if (configs.length > 0 && configs[0].spreadsheetId) {
+      setIsLocked(true);
+    } else {
+      setIsLocked(false);
+    }
   }, [reset]);
 
   useEffect(
@@ -67,15 +76,21 @@ export default function AdminPage() {
     if (savedBannerTid.current) clearTimeout(savedBannerTid.current);
     savedBannerTid.current = setTimeout(() => setShowSavedBanner(false), 8000);
     reset(data);
+    setIsLocked(true);
   }
 
   function normalizeIdField(index: number) {
+    if (isLocked) return;
     const raw = watched?.[index]?.spreadsheetId;
     if (raw == null || String(raw).trim() === "") return;
     setValue(`configs.${index}.spreadsheetId`, normalizeSpreadsheetId(String(raw)));
   }
 
   function clearEverythingAndStartFresh() {
+    if (isLocked) {
+      alert("Admin settings are locked. Click 'Unlock Settings' to make changes.");
+      return;
+    }
     if (!window.confirm("Delete all saved sheet connections in this browser and start with one empty form?")) {
       return;
     }
@@ -109,9 +124,23 @@ export default function AdminPage() {
       <AppNav />
       <header className="border-b border-zinc-200 bg-white/90 dark:border-zinc-800 dark:bg-zinc-950/90">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div>
-            <h1 className="text-lg font-semibold">Admin — Sheet connections</h1>
-            <p className="text-xs text-zinc-500">
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <h1 className="text-lg font-semibold">Admin — Sheet connections</h1>
+              <button
+                type="button"
+                onClick={() => setIsLocked(!isLocked)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-all",
+                  isLocked 
+                    ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400" 
+                    : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400"
+                )}
+              >
+                {isLocked ? "🔒 Unlock Settings" : "🔓 Settings Unlocked"}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-zinc-500">
               Add each Google Sheet as a connection, then click <strong>Save</strong>. Connections stay in this
               browser. On sync, the server uses <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">GOOGLE_API_KEY</code>{" "}
               and the Sheets API (spreadsheets must use <strong>Anyone with the link</strong> → Viewer, or be public, so
@@ -195,13 +224,14 @@ export default function AdminPage() {
               </div>
 
               {isExpanded && (
-                <div className="p-4">
+              <div className="p-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block text-xs font-medium text-zinc-500">
                       Connection name
                       <input
                         {...register(`configs.${index}.name`)}
-                        className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                        disabled={isLocked}
+                        className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800"
                         placeholder="e.g. Main leads tab"
                         required
                       />
@@ -211,7 +241,8 @@ export default function AdminPage() {
                       <input
                         {...register(`configs.${index}.spreadsheetId`)}
                         onBlur={() => normalizeIdField(index)}
-                        className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm font-mono text-xs dark:border-zinc-600 dark:bg-zinc-800"
+                        disabled={isLocked}
+                        className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm font-mono text-xs disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800"
                         placeholder="Paste full Google Sheets link or the ID"
                         required
                       />
@@ -221,6 +252,7 @@ export default function AdminPage() {
                       <input
                         type="number"
                         inputMode="numeric"
+                        disabled={isLocked}
                         placeholder="from URL: …#gid=626655690"
                         {...register(`configs.${index}.sheetGid`, {
                           setValueAs: (v) => {
@@ -229,7 +261,7 @@ export default function AdminPage() {
                             return Number.isFinite(n) ? n : undefined;
                           },
                         })}
-                        className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm font-mono dark:border-zinc-600 dark:bg-zinc-800"
+                        className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm font-mono disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800"
                       />
                     </label>
                     <label className="sm:col-span-2 block text-xs font-medium text-zinc-500">
@@ -243,7 +275,8 @@ export default function AdminPage() {
                             return (v && String(v).trim().length > 0) || "Set tab name, or set Tab GID from the sheet URL";
                           },
                         })}
-                        className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                        disabled={isLocked}
+                        className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800"
                         placeholder="Sheet1 (ignored when GID is set)"
                       />
                     </label>
@@ -255,11 +288,11 @@ export default function AdminPage() {
                       [
                         { key: "campaign", label: "Campaign data (optional)", emptyOk: true },
                         { key: "fullName", label: "Full name", emptyOk: false },
-                    { key: "phone", label: "Phone number", emptyOk: false },
-                    { key: "serviceRequired", label: "Service required", emptyOk: false },
-                    { key: "receivedAt", label: "Received date/time (optional)", emptyOk: true },
-                    {
-                      key: "existingStatus",
+                        { key: "phone", label: "Phone number", emptyOk: false },
+                        { key: "serviceRequired", label: "Service required", emptyOk: false },
+                        { key: "receivedAt", label: "Received date/time (optional)", emptyOk: true },
+                        {
+                          key: "existingStatus",
                           label: "Existing status / feedback (optional)",
                           emptyOk: true,
                         },
@@ -277,7 +310,8 @@ export default function AdminPage() {
                               return !s.trim() || validateColumnLetter(s) || "Use column letter(s) A–Z";
                             },
                           })}
-                          className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm font-mono uppercase dark:border-zinc-600 dark:bg-zinc-800"
+                          disabled={isLocked}
+                          className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm font-mono uppercase disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800"
                           maxLength={3}
                         />
                       </label>
@@ -296,10 +330,11 @@ export default function AdminPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
+              disabled={isLocked}
               onClick={() => append(createEmptySheetConfiguration())}
               className={cn(
                 "inline-flex items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-sm",
-                "text-zinc-700 hover:border-sky-400 hover:text-sky-800 dark:border-zinc-600 dark:hover:text-sky-300"
+                "text-zinc-700 hover:border-sky-400 hover:text-sky-800 disabled:opacity-40 dark:border-zinc-600 dark:hover:text-sky-300"
               )}
             >
               <Plus className="h-4 w-4" />
@@ -307,14 +342,16 @@ export default function AdminPage() {
             </button>
             <button
               type="submit"
-              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+              disabled={isLocked}
+              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
             >
               Save connections
             </button>
             <button
               type="button"
+              disabled={isLocked}
               onClick={clearEverythingAndStartFresh}
-              className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-rose-800 hover:bg-rose-50 dark:border-rose-900 dark:bg-zinc-900 dark:text-rose-200 dark:hover:bg-rose-950/50"
+              className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-rose-800 hover:bg-rose-50 disabled:opacity-40 dark:border-rose-900 dark:bg-zinc-900 dark:text-rose-200 dark:hover:bg-rose-950/50"
             >
               Clear all &amp; start over
             </button>

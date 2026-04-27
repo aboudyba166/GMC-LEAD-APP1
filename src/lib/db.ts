@@ -176,8 +176,8 @@ export function listLeadsPage(params: ListParams): { items: LeadRecord[]; total:
   }
   if (bucket && bucket !== "all") {
     const map: Record<string, string[]> = {
-      new: [LEAD_STATUS.NEW_LEAD],
-      follow_up: [LEAD_STATUS.NO_ANSWER, LEAD_STATUS.INQUIRY, LEAD_STATUS.WILL_CALL_BACK],
+      new: [LEAD_STATUS.NEW_LEAD, LEAD_STATUS.IN_PROGRESS],
+      follow_up: [LEAD_STATUS.IN_PROGRESS, LEAD_STATUS.NO_ANSWER, LEAD_STATUS.INQUIRY, LEAD_STATUS.WILL_CALL_BACK],
       won: [LEAD_STATUS.BOOKED],
       lost: [LEAD_STATUS.NOT_INTERESTED, LEAD_STATUS.PRICE_HIGH],
       invalid: [LEAD_STATUS.SENT_MISTAKE, LEAD_STATUS.WRONG_NUMBER, LEAD_STATUS.OUT_OF_SERVICE],
@@ -198,7 +198,7 @@ export function listLeadsPage(params: ListParams): { items: LeadRecord[]; total:
   const rows = d
     .prepare(
       `SELECT * FROM leads ${where}
-       ORDER BY datetime(created_at) DESC, datetime(updated_at) DESC
+       ORDER BY datetime(created_at) DESC
        LIMIT ? OFFSET ?`
     )
     .all(...args, pageSize, offset) as Row[];

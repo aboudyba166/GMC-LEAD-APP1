@@ -45,6 +45,7 @@ export function createEmptySheetConfiguration(): SheetConfiguration {
       fullName: "B",
       phone: "C",
       serviceRequired: "D",
+      receivedAt: "W",
       existingStatus: "",
     },
   };

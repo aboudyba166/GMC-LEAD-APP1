@@ -21,6 +21,7 @@ import {
   saveSheetConfigurations,
 } from "@/lib/sheet-config-browser";
 import { CheckCircle2, Trash2, Plus, ChevronDown, ChevronRight, Download, Upload } from "lucide-react";
+import { nanoid } from "nanoid";
 
 type FormValues = {
   configs: SheetConfiguration[];

@@ -57,6 +57,13 @@ export function LeadCommandCenter() {
   const [banner, setBanner] = useState<string | null>(null);
   const [hasSavedSheetConnections, setHasSavedSheetConnections] = useState(true);
 
+  // Request notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      void Notification.requestPermission();
+    }
+  }, []);
+
   useEffect(() => {
     const t = setTimeout(() => setQDebounced(q), 300);
     return () => clearTimeout(t);
@@ -126,15 +133,25 @@ export function LeadCommandCenter() {
     setPage(1);
   }, [qDebounced, bucket]);
 
-  async function manualSync() {
-    setSyncing(true);
-    setBanner(null);
+  // Auto-sync every 1 minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void manualSync(true); // true means background sync
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  async function manualSync(isBackground = false) {
+    if (!isBackground) setSyncing(true);
+    if (!isBackground) setBanner(null);
     try {
       const configurations = loadSheetConfigurations();
       if (configurations.length === 0) {
-        setBanner(
-          "No sheet connections are saved in this browser. Open Admin, add a Google Sheet, click Save, then try Manual Sync again."
-        );
+        if (!isBackground) {
+          setBanner(
+            "No sheet connections are saved in this browser. Open Admin, add a Google Sheet, click Save, then try Manual Sync again."
+          );
+        }
         return;
       }
       const res = await fetch("/api/sync", {
@@ -150,24 +167,38 @@ export function LeadCommandCenter() {
         error?: string;
       };
       if (!j.ok) {
-        setBanner(j.error || "Sync failed");
+        if (!isBackground) setBanner(j.error || "Sync failed");
         return;
       }
-      setBanner(
-        `Synced: ${j.inserted ?? 0} new, ${j.merged ?? 0} existing rows merged, ${j.duplicatesPrevented ?? 0} duplicate rows skipped in batch.`
-      );
+
+      if (j.inserted && j.inserted > 0) {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("New Leads Received!", {
+            body: `Successfully pulled ${j.inserted} new leads from Google Sheets.`,
+            icon: "/favicon.ico",
+          });
+        }
+      }
+
+      if (!isBackground) {
+        setBanner(
+          `Synced: ${j.inserted ?? 0} new, ${j.merged ?? 0} existing rows merged, ${j.duplicatesPrevented ?? 0} duplicate rows skipped in batch.`
+        );
+      }
       await load();
       await loadMetrics();
     } catch (e) {
-      if (looksLikeNoServer(e)) {
-        setBanner(
-          "Could not reach the server. Run npm run dev in the web folder, open this app at http://localhost:3000, or use npm run dev:lan if you browse from another device on the network."
-        );
-      } else {
-        setBanner(e instanceof Error ? e.message : "Sync error");
+      if (!isBackground) {
+        if (looksLikeNoServer(e)) {
+          setBanner(
+            "Could not reach the server. Run npm run dev in the web folder, open this app at http://localhost:3000, or use npm run dev:lan if you browse from another device on the network."
+          );
+        } else {
+          setBanner(e instanceof Error ? e.message : "Sync error");
+        }
       }
     } finally {
-      setSyncing(false);
+      if (!isBackground) setSyncing(false);
     }
   }
 

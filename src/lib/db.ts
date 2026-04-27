@@ -198,7 +198,7 @@ export function listLeadsPage(params: ListParams): { items: LeadRecord[]; total:
   const rows = d
     .prepare(
       `SELECT * FROM leads ${where}
-       ORDER BY COALESCE(source_row, -1) DESC, source_id DESC, datetime(created_at) DESC
+       ORDER BY datetime(updated_at) DESC, COALESCE(source_row, -1) DESC, source_id DESC
        LIMIT ? OFFSET ?`
     )
     .all(...args, pageSize, offset) as Row[];

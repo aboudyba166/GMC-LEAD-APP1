@@ -20,7 +20,7 @@ import {
   removeLegacySheetConfigurationKey,
   saveSheetConfigurations,
 } from "@/lib/sheet-config-browser";
-import { CheckCircle2, Trash2, Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { CheckCircle2, Trash2, Plus, ChevronDown, ChevronRight, Download, Upload } from "lucide-react";
 
 type FormValues = {
   configs: SheetConfiguration[];
@@ -38,6 +38,7 @@ export default function AdminPage() {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [isLocked, setIsLocked] = useState(true);
   const savedBannerTid = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { control, register, handleSubmit, reset, setValue, formState } = useForm<FormValues>({
     defaultValues: { configs: [createEmptySheetConfiguration()] },
@@ -117,6 +118,94 @@ export default function AdminPage() {
     } catch (e) {
       alert("Network error: Could not reach the server.");
     }
+  }
+
+  function exportToCsv() {
+    const configs = watched || [];
+    if (configs.length === 0) {
+      alert("No connections to export.");
+      return;
+    }
+
+    const headers = ["name", "spreadsheetId", "tabName", "sheetGid", "col_campaign", "col_fullName", "col_phone", "col_serviceRequired", "col_receivedAt", "col_existingStatus"];
+    const rows = configs.map(c => [
+      c.name,
+      c.spreadsheetId,
+      c.tabName,
+      c.sheetGid || "",
+      c.columns.campaign,
+      c.columns.fullName,
+      c.columns.phone,
+      c.columns.serviceRequired,
+      c.columns.receivedAt || "",
+      c.columns.existingStatus || ""
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `lcc-connections-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function handleImportCsv(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split("\n").filter(l => l.trim());
+        if (lines.length < 2) throw new Error("Invalid CSV format");
+
+        const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
+        const newConfigs: SheetConfiguration[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          // Simple CSV parser for quoted values
+          const values = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)?.map(v => v.replace(/^"|"$/g, "").replace(/""/g, '"')) || [];
+          if (values.length < 4) continue;
+
+          const config: SheetConfiguration = {
+            id: nanoid(),
+            name: values[0] || "Imported Connection",
+            spreadsheetId: values[1] || "",
+            tabName: values[2] || "Sheet1",
+            sheetGid: values[3] ? Number(values[3]) : undefined,
+            columns: {
+              campaign: values[4] || "A",
+              fullName: values[5] || "B",
+              phone: values[6] || "C",
+              serviceRequired: values[7] || "D",
+              receivedAt: values[8] || "W",
+              existingStatus: values[9] || ""
+            }
+          };
+          newConfigs.push(config);
+        }
+
+        if (newConfigs.length > 0) {
+          if (window.confirm(`Import ${newConfigs.length} connections? This will replace your current list.`)) {
+            reset({ configs: newConfigs });
+            setIsLocked(false);
+            alert("Connections imported! Click 'Save connections' to keep them.");
+          }
+        }
+      } catch (err) {
+        alert("Error importing CSV. Please check the file format.");
+      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsText(file);
   }
 
   return (
@@ -347,6 +436,37 @@ export default function AdminPage() {
             >
               Save connections
             </button>
+            
+            <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800 mx-1" />
+
+            <button
+              type="button"
+              onClick={exportToCsv}
+              className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              title="Export connections to CSV"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </button>
+
+            <label className={cn(
+              "inline-flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800",
+              isLocked && "opacity-40 cursor-not-allowed"
+            )}>
+              <Upload className="h-4 w-4" />
+              Import CSV
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept=".csv"
+                disabled={isLocked}
+                onChange={handleImportCsv}
+              />
+            </label>
+
+            <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800 mx-1" />
+
             <button
               type="button"
               disabled={isLocked}

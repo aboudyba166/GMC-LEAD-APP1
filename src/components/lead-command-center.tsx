@@ -56,6 +56,18 @@ export function LeadCommandCenter() {
   const [copyId, setCopyId] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [hasSavedSheetConnections, setHasSavedSheetConnections] = useState(true);
+  const [agentName, setAgentName] = useState<string>("");
+
+  // Load agent name from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("lcc_agent_name");
+    if (saved) setAgentName(saved);
+  }, []);
+
+  const saveAgentName = (name: string) => {
+    setAgentName(name);
+    localStorage.setItem("lcc_agent_name", name);
+  };
 
   // Request notification permission on mount
   useEffect(() => {
@@ -157,7 +169,10 @@ export function LeadCommandCenter() {
       const res = await fetch("/api/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ configurations }),
+        body: JSON.stringify({ 
+          configurations,
+          isAutoSync: isBackground 
+        }),
       });
       const j = (await res.json()) as {
         ok: boolean;
@@ -247,6 +262,16 @@ export function LeadCommandCenter() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2 py-1.5 dark:border-zinc-800 dark:bg-zinc-900">
+              <span className="text-[10px] font-bold uppercase text-zinc-400">Agent:</span>
+              <input
+                type="text"
+                value={agentName}
+                onChange={(e) => saveAgentName(e.target.value)}
+                placeholder="Your Name"
+                className="w-24 bg-transparent text-xs font-semibold focus:outline-none dark:text-zinc-100"
+              />
+            </div>
             <span className="text-xs text-zinc-500 dark:text-zinc-400 sm:text-sm">
               Last sheet sync:{" "}
               <time dateTime={metrics?.lastSyncAt ?? ""}>{formatWhen(metrics?.lastSyncAt ?? null)}</time>
@@ -399,6 +424,7 @@ export function LeadCommandCenter() {
                       onUpdate={patchLead}
                       onCopy={copyPhone}
                       copyId={copyId}
+                      currentAgent={agentName}
                     />
                   ))}
                 {!loading && rows.length === 0 && (

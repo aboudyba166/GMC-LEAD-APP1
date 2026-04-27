@@ -67,6 +67,8 @@ function migrate(database: Database.Database) {
   add("whatsapp_sent", "ALTER TABLE leads ADD COLUMN whatsapp_sent TEXT");
   add("reminder_sent", "ALTER TABLE leads ADD COLUMN reminder_sent TEXT");
   add("source_row", "ALTER TABLE leads ADD COLUMN source_row INTEGER");
+  add("notes", "ALTER TABLE leads ADD COLUMN notes TEXT");
+  add("last_action_at", "ALTER TABLE leads ADD COLUMN last_action_at TEXT");
 
   database.exec(`
     UPDATE leads SET fetched_at = created_at WHERE fetched_at IS NULL OR fetched_at = '';
@@ -111,6 +113,8 @@ type Row = {
   whatsapp_sent: string | null;
   reminder_sent: string | null;
   source_row: number | null;
+  notes: string | null;
+  last_action_at: string | null;
 };
 
 function zYesNo(s: string | null | undefined): YesNo {
@@ -143,6 +147,8 @@ function rowToLead(r: Row): LeadRecord {
     actionCall: (r.action_call && r.action_call.trim()) || "",
     whatsappSent: zYesNo(r.whatsapp_sent),
     reminderSent: zYesNo(r.reminder_sent),
+    notes: z(r.notes),
+    lastActionAt: z(r.last_action_at),
   };
 }
 
@@ -277,7 +283,7 @@ function dedupeSyncRowsLastWins(rows: SyncIngestionRow[]): {
   };
 }
 
-export function runSyncIngestion(rows: SyncIngestionRow[]) {
+export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = false) {
   const d = getDb();
   let inserted = 0;
   let merged = 0;
@@ -290,8 +296,8 @@ export function runSyncIngestion(rows: SyncIngestionRow[]) {
     `INSERT OR IGNORE INTO leads
     (id, campaign_data, full_name, phone, email, service_required, phone_key, status, assigned_to, source_id,
      created_at, updated_at, fetched_at, first_action_at, follow_up_at, follow_up_note, lost_reason,
-     action_call, whatsapp_sent, reminder_sent, source_row)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, '', '', '', ?)`
+     action_call, whatsapp_sent, reminder_sent, source_row, notes, last_action_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, '', '', '', ?, NULL, NULL)`
   );
   const updDataOnly = d.prepare(
     `UPDATE leads SET
@@ -396,6 +402,8 @@ export type LeadPatch = {
   actionCall?: string;
   whatsappSent?: YesNo;
   reminderSent?: YesNo;
+  notes?: string | null;
+  lastActionAt?: string | null;
 };
 
 function shouldSetFirstAction(
@@ -422,6 +430,11 @@ export function updateLead(id: string, patch: LeadPatch) {
   const now = new Date().toISOString();
   const nextStatus = (patch.status ?? normalizeStatusFromDb(prev.status)) as LeadStatus;
   const firstAction = shouldSetFirstAction(prev, patch, nextStatus) ? now : prev.first_action_at;
+
+  // If status is being changed to in_progress, ensure last_action_at is set
+  if (patch.status === "in_progress" && !patch.lastActionAt) {
+    patch.lastActionAt = now;
+  }
 
   const f: string[] = ["updated_at = ?"];
   const a: string[] = [now];
@@ -457,6 +470,14 @@ export function updateLead(id: string, patch: LeadPatch) {
   if (patch.reminderSent !== undefined) {
     f.push("reminder_sent = ?");
     a.push(patch.reminderSent);
+  }
+  if (patch.notes !== undefined) {
+    f.push("notes = ?");
+    a.push(patch.notes ?? "");
+  }
+  if (patch.lastActionAt !== undefined) {
+    f.push("last_action_at = ?");
+    a.push(patch.lastActionAt ?? "");
   }
   if (firstAction && firstAction !== prev.first_action_at) {
     f.push("first_action_at = ?");

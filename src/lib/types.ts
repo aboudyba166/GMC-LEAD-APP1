@@ -33,4 +33,8 @@ export type LeadRecord = StandardLeadRow & {
   actionCall: string;
   whatsappSent: YesNo;
   reminderSent: YesNo;
+  /** Detailed notes for in-progress leads */
+  notes: string | null;
+  /** Last time an agent took a specific action */
+  lastActionAt: string | null;
 };

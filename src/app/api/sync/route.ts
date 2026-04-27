@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
         sourceId: r.sourceId,
         initialStatus: r.initialStatus,
         sheetRow: r.sheetRow,
-      }))
+      })),
+      !!(body as any).isAutoSync
     );
     return NextResponse.json({
       ok: true,

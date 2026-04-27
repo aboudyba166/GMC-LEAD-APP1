@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Lock } from "lucide-react";
+import { Check, Copy, Lock, UserCheck, MessageSquarePlus } from "lucide-react";
 import { LeadStatusSelect } from "./lead-status-select";
 import { cn } from "@/lib/utils";
 import { isoToLocalDatetimeValue, localDatetimeValueToIso } from "@/lib/datetime-input";
@@ -28,6 +28,7 @@ type Props = {
   onUpdate: (id: string, patch: Record<string, unknown>) => Promise<LeadRecord | null>;
   onCopy: (phone: string, id: string) => void;
   copyId: string | null;
+  currentAgent?: string;
 };
 
 function fmtShort(iso: string | null) {
@@ -44,12 +45,15 @@ function fmtShort(iso: string | null) {
   }
 }
 
-export function LeadRow({ lead, onUpdate, onCopy, copyId }: Props) {
+export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props) {
   const booked = isBookedStatus(lead.status);
+  const inProgress = lead.status === "in_progress";
+  const isNew = lead.status === "new";
   const [localFollowAt, setLocalFollowAt] = useState(isoToLocalDatetimeValue(lead.followUpAt));
   const [localFollowNote, setLocalFollowNote] = useState(lead.followUpNote ?? "");
   const [localLost, setLocalLost] = useState(lead.lostReason ?? "");
   const [localActionCall, setLocalActionCall] = useState(lead.actionCall ?? "");
+  const [localNote, setLocalNote] = useState(lead.notes ?? "");
   const followDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -57,6 +61,7 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId }: Props) {
     setLocalFollowNote(lead.followUpNote ?? "");
     setLocalLost(lead.lostReason ?? "");
     setLocalActionCall(lead.actionCall ?? "");
+    setLocalNote(lead.notes ?? "");
   }, [lead]);
 
   useEffect(() => {
@@ -69,11 +74,24 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId }: Props) {
     await onUpdate(lead.id, { status: s });
   }
 
+  async function claimLead() {
+    if (!currentAgent) {
+      alert("Please set your agent name in the header first!");
+      return;
+    }
+    await onUpdate(lead.id, { 
+      status: "in_progress", 
+      assignedTo: currentAgent,
+      lastActionAt: new Date().toISOString()
+    });
+  }
+
   return (
     <tr
       className={cn(
-        "border-b border-zinc-100 dark:border-zinc-800/80",
-        booked && "bg-emerald-50/50 opacity-[0.88] dark:bg-emerald-950/20 dark:opacity-90"
+        "border-b border-zinc-100 transition-colors dark:border-zinc-800/80",
+        booked && "bg-emerald-50/50 opacity-[0.88] dark:bg-emerald-950/20 dark:opacity-90",
+        inProgress && "bg-sky-50/40 dark:bg-sky-950/10"
       )}
     >
       <td
@@ -93,6 +111,11 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId }: Props) {
             <Lock className="h-3 w-3" /> Booked
           </span>
         )}
+        {inProgress && (
+          <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-sky-600 dark:text-sky-400">
+            <UserCheck className="h-3 w-3" /> In Progress
+          </span>
+        )}
       </td>
       <td
         className={cn(
@@ -108,12 +131,23 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId }: Props) {
       <td className="min-w-[240px] px-1 py-1 align-top">
         <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-2">
           <div className="shrink-0">
-            <LeadStatusSelect
-              value={lead.status}
-              onChange={(v) => void setStatus(v)}
-              disabled={booked}
-              aria-label={`Status for ${lead.fullName || lead.id}`}
-            />
+            {isNew ? (
+              <button
+                type="button"
+                onClick={() => void claimLead()}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 dark:bg-sky-500 dark:hover:bg-sky-400"
+              >
+                <UserCheck className="h-3.5 w-3.5" />
+                Claim Lead
+              </button>
+            ) : (
+              <LeadStatusSelect
+                value={lead.status}
+                onChange={(v) => void setStatus(v)}
+                disabled={booked}
+                aria-label={`Status for ${lead.fullName || lead.id}`}
+              />
+            )}
           </div>
           {needsFollowUpFields(lead.status) && !booked && (
             <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -151,6 +185,18 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId }: Props) {
               className="w-full min-w-0 max-w-xs rounded border border-rose-200 bg-rose-50/40 px-1.5 py-1 text-[11px] dark:border-rose-900 dark:bg-rose-950/30"
             />
           )}
+          {inProgress && (
+            <div className="flex flex-1 flex-col gap-1">
+              <textarea
+                value={localNote}
+                onChange={(e) => setLocalNote(e.target.value)}
+                onBlur={() => void onUpdate(lead.id, { notes: localNote || null })}
+                placeholder="Call notes..."
+                rows={2}
+                className="w-full max-w-xs rounded border border-sky-200 bg-white px-1.5 py-1 text-[11px] dark:border-sky-800 dark:bg-zinc-900"
+              />
+            </div>
+          )}
         </div>
       </td>
       <td className="max-w-[140px] px-1 py-1">
@@ -165,20 +211,33 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId }: Props) {
           aria-label="First action (call)"
         />
       </td>
-      <td className="px-1 py-1">
-        <select
-          value={lead.whatsappSent}
-          onChange={(e) => void onUpdate(lead.id, { whatsappSent: e.target.value as YesNo })}
-          disabled={booked}
-          className="w-full min-w-[72px] rounded border border-zinc-200 bg-white py-1 text-[11px] disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800"
-          aria-label="WhatsApp sent"
-        >
-          {YES_NO.map((o) => (
-            <option key={o.value || "empty"} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+      <td className="px-1 py-1 text-center">
+        <div className="flex flex-col gap-1">
+          <select
+            value={lead.whatsappSent}
+            onChange={(e) => void onUpdate(lead.id, { whatsappSent: e.target.value as YesNo })}
+            disabled={booked}
+            className="w-full min-w-[72px] rounded border border-zinc-200 bg-white py-1 text-[11px] disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800"
+            aria-label="WhatsApp sent"
+          >
+            {YES_NO.map((o) => (
+              <option key={o.value || "empty"} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          {lead.phoneNumber && (
+            <a
+              href={`https://wa.me/${lead.phoneNumber.replace(/\D/g, "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1 rounded bg-emerald-500 px-1 py-0.5 text-[10px] font-bold text-white hover:bg-emerald-600"
+            >
+              <MessageSquarePlus className="h-3 w-3" />
+              Chat
+            </a>
+          )}
+        </div>
       </td>
       <td className="px-1 py-1">
         <select
@@ -196,7 +255,14 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId }: Props) {
         </select>
       </td>
       <td className="whitespace-nowrap px-2 py-2 text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
-        {fmtShort(lead.lastUpdatedAt)}
+        <div className="flex flex-col">
+          <span>{fmtShort(lead.lastUpdatedAt)}</span>
+          {lead.lastActionAt && (
+            <span className="text-[9px] text-zinc-400 italic">
+              Acted: {fmtShort(lead.lastActionAt)}
+            </span>
+          )}
+        </div>
       </td>
       <td className="px-1 py-1">
         <select
@@ -209,7 +275,8 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId }: Props) {
           className={cn(
             "w-full min-w-[90px] max-w-[120px] rounded-md border border-zinc-200 bg-white px-1.5 py-1 text-[11px]",
             "disabled:cursor-not-allowed disabled:opacity-60",
-            "dark:border-zinc-600 dark:bg-zinc-800"
+            "dark:border-zinc-600 dark:bg-zinc-800",
+            lead.assignedTo && "font-semibold text-sky-700 dark:text-sky-400"
           )}
         >
           {AGENT_PLACEHOLDERS.map((a) => (

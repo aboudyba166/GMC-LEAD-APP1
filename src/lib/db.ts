@@ -51,6 +51,22 @@ function migrate(database: Database.Database) {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS sheet_connections (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      spreadsheet_id TEXT NOT NULL,
+      tab_name TEXT NOT NULL,
+      sheet_gid INTEGER,
+      col_campaign TEXT NOT NULL,
+      col_full_name TEXT NOT NULL,
+      col_phone TEXT NOT NULL,
+      col_service_required TEXT NOT NULL,
+      col_received_at TEXT,
+      col_existing_status TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 
   const cols = columnNames(database, "leads");
@@ -346,6 +362,55 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
   bumpDupeTotal(duplicatesPrevented);
   d.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("last_sync_at", now);
   return { inserted, merged, duplicatesPrevented, at: now };
+}
+
+export function listSheetConnections(): SheetConfiguration[] {
+  const d = getDb();
+  const rows = d.prepare("SELECT * FROM sheet_connections ORDER BY name ASC").all() as any[];
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    spreadsheetId: r.spreadsheet_id,
+    tabName: r.tab_name,
+    sheetGid: r.sheet_gid ?? undefined,
+    columns: {
+      campaign: r.col_campaign,
+      fullName: r.col_full_name,
+      phone: r.col_phone,
+      serviceRequired: r.col_service_required,
+      receivedAt: r.col_received_at ?? undefined,
+      existingStatus: r.col_existing_status ?? undefined
+    }
+  }));
+}
+
+export function saveSheetConnection(config: SheetConfiguration) {
+  const d = getDb();
+  const now = new Date().toISOString();
+  d.prepare(`
+    INSERT OR REPLACE INTO sheet_connections 
+    (id, name, spreadsheet_id, tab_name, sheet_gid, col_campaign, col_full_name, col_phone, col_service_required, col_received_at, col_existing_status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    config.id,
+    config.name,
+    config.spreadsheetId,
+    config.tabName,
+    config.sheetGid ?? null,
+    config.columns.campaign,
+    config.columns.fullName,
+    config.columns.phone,
+    config.columns.serviceRequired,
+    config.columns.receivedAt ?? null,
+    config.columns.existingStatus ?? null,
+    now,
+    now
+  );
+}
+
+export function deleteSheetConnection(id: string) {
+  const d = getDb();
+  d.prepare("DELETE FROM sheet_connections WHERE id = ?").run(id);
 }
 
 export type LeadPatch = {

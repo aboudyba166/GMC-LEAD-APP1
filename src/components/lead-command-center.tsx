@@ -157,7 +157,23 @@ export function LeadCommandCenter() {
     if (!isBackground) setSyncing(true);
     if (!isBackground) setBanner(null);
     try {
-      const configurations = loadSheetConfigurations();
+      // First try to load configurations from the server
+      let configurations = [];
+      try {
+        const connRes = await fetch("/api/admin/connections");
+        const connData = await connRes.json();
+        if (connRes.ok && connData.connections?.length > 0) {
+          configurations = connData.connections;
+        }
+      } catch (e) {
+        console.warn("Failed to load connections from server, falling back to local storage", e);
+      }
+
+      // Fallback to local storage if server is empty
+      if (configurations.length === 0) {
+        configurations = loadSheetConfigurations();
+      }
+
       if (configurations.length === 0) {
         if (!isBackground) {
           setBanner(

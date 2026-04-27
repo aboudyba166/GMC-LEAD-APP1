@@ -38,28 +38,46 @@ export default function AdminPage() {
   const [showSavedBanner, setShowSavedBanner] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [isLocked, setIsLocked] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const savedBannerTid = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { control, register, handleSubmit, reset, setValue, formState } = useForm<FormValues>({
-    defaultValues: { configs: [createEmptySheetConfiguration()] },
+    defaultValues: { configs: [] },
   });
   const { isDirty } = formState;
   const { fields, append, remove } = useFieldArray({ control, name: "configs" });
   const watched = useWatch({ control, name: "configs" });
 
   useEffect(() => {
-    removeLegacySheetConfigurationKey();
-    const configs = initialFormConfigs();
-    reset({ configs });
-    setLastSaved(getLastSheetConfigSavedDisplay());
-    
-    // If we have saved configs, lock them by default
-    if (configs.length > 0 && configs[0].spreadsheetId) {
-      setIsLocked(true);
-    } else {
-      setIsLocked(false);
+    async function load() {
+      setIsLoading(true);
+      try {
+        const res = await fetch("/api/admin/connections");
+        const data = await res.json();
+        if (res.ok && data.connections?.length > 0) {
+          reset({ configs: data.connections });
+          setIsLocked(true);
+        } else {
+          // Fallback to local storage if server is empty (migration)
+          const local = loadSheetConfigurations();
+          if (local.length > 0) {
+            reset({ configs: local });
+            setIsLocked(true);
+          } else {
+            reset({ configs: [createEmptySheetConfiguration()] });
+            setIsLocked(false);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load connections from server", e);
+      } finally {
+        setIsLoading(false);
+      }
     }
+    removeLegacySheetConfigurationKey();
+    load();
+    setLastSaved(getLastSheetConfigSavedDisplay());
   }, [reset]);
 
   useEffect(
@@ -69,16 +87,31 @@ export default function AdminPage() {
     []
   );
 
-  function onSubmit(data: FormValues) {
-    saveSheetConfigurations(data.configs);
-    window.dispatchEvent(new Event(LCC_SHEET_CONFIG_CHANGED_EVENT));
-    const d = new Date();
-    setLastSaved(d.toLocaleString());
-    setShowSavedBanner(true);
-    if (savedBannerTid.current) clearTimeout(savedBannerTid.current);
-    savedBannerTid.current = setTimeout(() => setShowSavedBanner(false), 8000);
-    reset(data);
-    setIsLocked(true);
+  async function onSubmit(data: FormValues) {
+    try {
+      // Save to server database
+      const res = await fetch("/api/admin/connections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ configs: data.configs }),
+      });
+      
+      if (!res.ok) throw new Error("Failed to save to server");
+
+      // Also save to local storage for redundancy
+      saveSheetConfigurations(data.configs);
+      
+      window.dispatchEvent(new Event(LCC_SHEET_CONFIG_CHANGED_EVENT));
+      const d = new Date();
+      setLastSaved(d.toLocaleString());
+      setShowSavedBanner(true);
+      if (savedBannerTid.current) clearTimeout(savedBannerTid.current);
+      savedBannerTid.current = setTimeout(() => setShowSavedBanner(false), 8000);
+      reset(data);
+      setIsLocked(true);
+    } catch (e) {
+      alert("Error saving connections: " + String(e));
+    }
   }
 
   function normalizeIdField(index: number) {

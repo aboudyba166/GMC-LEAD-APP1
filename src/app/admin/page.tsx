@@ -174,17 +174,18 @@ export default function AdminPage() {
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
+        console.log("Importing CSV text:", text);
+        
         // Split by lines and filter out empty ones
-        const lines = text.split(/\r?\n/).filter(l => l.trim());
-        if (lines.length < 2) throw new Error("Invalid CSV format");
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        if (lines.length < 2) throw new Error("Invalid CSV format: No data rows found");
 
         const newConfigs: SheetConfiguration[] = [];
 
-        // Skip header row
+        // Skip header row (i=0)
         for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-
+          const line = lines[i];
+          
           // Robust CSV parser that handles quoted values with commas
           const values: string[] = [];
           let current = '';
@@ -195,22 +196,25 @@ export default function AdminPage() {
             if (char === '"') {
               inQuotes = !inQuotes;
             } else if (char === ',' && !inQuotes) {
-              values.push(current.trim());
+              values.push(current);
               current = '';
             } else {
               current += char;
             }
           }
-          values.push(current.trim());
+          values.push(current);
 
           // Clean up quotes and escaped quotes
-          const cleanValues = values.map(v => v.replace(/^"|"$/g, "").replace(/""/g, '"'));
+          const cleanValues = values.map(v => v.trim().replace(/^"|"$/g, "").replace(/""/g, '"'));
 
-          if (cleanValues.length < 4) continue;
+          if (cleanValues.length < 4) {
+            console.warn(`Skipping line ${i} due to insufficient columns:`, line);
+            continue;
+          }
 
           const config: SheetConfiguration = {
             id: nanoid(),
-            name: cleanValues[0] || "Imported Connection",
+            name: cleanValues[0] || `Connection ${i}`,
             spreadsheetId: cleanValues[1] || "",
             tabName: cleanValues[2] || "Sheet1",
             sheetGid: cleanValues[3] ? Number(cleanValues[3]) : undefined,
@@ -226,17 +230,25 @@ export default function AdminPage() {
           newConfigs.push(config);
         }
 
+        console.log("Parsed configs:", newConfigs);
+
         if (newConfigs.length > 0) {
           if (window.confirm(`Import ${newConfigs.length} connections? This will replace your current list.`)) {
-            reset({ configs: newConfigs });
-            setIsLocked(false);
-            setExpandedIndex(null);
-            alert("Connections imported! Click 'Save connections' to keep them.");
+            // Use a timeout to ensure reset happens after the confirm dialog closes
+            setTimeout(() => {
+              reset({ configs: newConfigs });
+              setIsLocked(false);
+              setExpandedIndex(null);
+              // Force a re-render by setting a dummy state if needed, 
+              // but react-hook-form reset should handle it.
+            }, 0);
           }
+        } else {
+          alert("No valid connections found in the CSV file.");
         }
       } catch (err) {
-        console.error(err);
-        alert("Error importing CSV. Please check the file format.");
+        console.error("CSV Import Error:", err);
+        alert("Error importing CSV. Please check the file format in the console.");
       }
       if (fileInputRef.current) fileInputRef.current.value = "";
     };

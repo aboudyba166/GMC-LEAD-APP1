@@ -121,6 +121,15 @@ export default function AdminPage() {
     }
   }
 
+  function clearBrowserCache() {
+    if (!window.confirm("This will clear your local settings (sheet connections, agent name) and force a reload to fix 'Loading chunk' errors. Continue?")) {
+      return;
+    }
+    localStorage.clear();
+    // Force hard reload to clear script cache
+    window.location.href = window.location.href + '?clear=' + Date.now();
+  }
+
   function exportToCsv() {
     const configs = watched || [];
     if (configs.length === 0) {
@@ -482,6 +491,13 @@ export default function AdminPage() {
               className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 shadow-sm"
             >
               Clean Server Database
+            </button>
+            <button
+              type="button"
+              onClick={clearBrowserCache}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 shadow-sm"
+            >
+              Clear Browser Cache
             </button>
           </div>
         </form>

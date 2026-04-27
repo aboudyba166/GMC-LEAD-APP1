@@ -284,11 +284,12 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
   for (const r of toApply) {
     const svc = r.lead.serviceRequired;
     
-    // Create a unique key based on phone + service to allow the same person 
+    // Create a unique key based on phone + service + sourceId + sheetRow to allow the same person 
     // to submit for different services, but avoid duplicating the EXACT same entry.
     const phoneKey = normalizePhoneKey(r.lead.phoneNumber) || 'unknown';
     const serviceKey = (svc || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-    const uniqueEntryKey = `${phoneKey}_${serviceKey}`;
+    const sourceKey = (r.sourceId || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+    const uniqueEntryKey = `${phoneKey}_${serviceKey}_${sourceKey}_${r.sheetRow}`;
 
     // Check if this EXACT phone + service combination already exists
     const existing = d.prepare("SELECT id FROM leads WHERE phone_key = ?").get(uniqueEntryKey) as { id: string } | undefined;

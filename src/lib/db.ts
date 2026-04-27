@@ -432,7 +432,7 @@ export function updateLead(id: string, patch: LeadPatch) {
   const firstAction = shouldSetFirstAction(prev, patch, nextStatus) ? now : prev.first_action_at;
 
   // If status is being changed to in_progress, ensure last_action_at is set
-  if (patch.status === "in_progress" && !patch.lastActionAt) {
+  if (patch.status === LEAD_STATUS.IN_PROGRESS && !patch.lastActionAt) {
     patch.lastActionAt = now;
   }
 

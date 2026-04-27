@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Lock, UserCheck, MessageSquarePlus, MessageCircle } from "lucide-react";
+import { Check, Copy, Lock, UserCheck, MessageSquarePlus, MessageCircle, Clock } from "lucide-react";
 import { LeadStatusSelect } from "./lead-status-select";
 import { cn } from "@/lib/utils";
 import { isoToLocalDatetimeValue, localDatetimeValueToIso } from "@/lib/datetime-input";
@@ -50,6 +50,36 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
   const inProgress = lead.status === LEAD_STATUS.IN_PROGRESS;
   const isNew = lead.status === LEAD_STATUS.NEW_LEAD;
   
+  // Response Timer Logic
+  const [timeElapsed, setTimeElapsed] = useState<string>("");
+  const [timerColor, setTimeColor] = useState<string>("text-zinc-400");
+
+  useEffect(() => {
+    if (!isNew || !!lead.firstActionAt) {
+      setTimeElapsed("");
+      return;
+    }
+
+    const updateTimer = () => {
+      const start = new Date(lead.createdAt).getTime();
+      const now = new Date().getTime();
+      const diff = Math.floor((now - start) / 1000); // seconds
+
+      const mins = Math.floor(diff / 60);
+      const secs = diff % 60;
+      
+      if (mins < 15) setTimeColor("text-emerald-500 font-bold");
+      else if (mins < 60) setTimeColor("text-amber-500 font-bold");
+      else setTimeColor("text-rose-500 font-bold animate-pulse");
+
+      setTimeElapsed(`${mins}m ${secs}s`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [isNew, lead.createdAt, lead.firstActionAt]);
+
   // Check if follow-up is due today or overdue
   const isFollowUpDue = lead.followUpAt && new Date(lead.followUpAt) <= new Date();
 
@@ -106,6 +136,28 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
     window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
   };
 
+  const handleQuickAction = async (action: 'no_answer' | 'busy' | 'interested') => {
+    const patch: Record<string, any> = {};
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    if (action === 'no_answer') {
+      patch.status = LEAD_STATUS.NO_ANSWER;
+      patch.followUpAt = tomorrow.toISOString();
+      patch.actionCall = "No Answer - Sent WA";
+      openWhatsAppTemplate();
+    } else if (action === 'busy') {
+      patch.status = LEAD_STATUS.WILL_CALL_BACK;
+      patch.followUpAt = tomorrow.toISOString();
+      patch.actionCall = "Customer Busy";
+    } else if (action === 'interested') {
+      patch.status = LEAD_STATUS.INQUIRY;
+      patch.actionCall = "Interested - Discussing";
+    }
+
+    await onUpdate(lead.id, patch);
+  };
+
   return (
     <tr
       className={cn(
@@ -126,7 +178,15 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
       <td
         className={cn("max-w-[100px] truncate px-2 py-2 text-sm font-medium", booked && "text-zinc-500")}
       >
-        {lead.fullName || "—"}
+        <div className="flex flex-col">
+          <span>{lead.fullName || "—"}</span>
+          {timeElapsed && (
+            <span className={cn("inline-flex items-center gap-1 text-[9px] uppercase tracking-wider", timerColor)}>
+              <Clock className="h-2.5 w-2.5" />
+              {timeElapsed}
+            </span>
+          )}
+        </div>
         {booked && (
           <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
             <Lock className="h-3 w-3" /> Booked
@@ -166,6 +226,27 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
                 <UserCheck className="h-3.5 w-3.5" />
                 Claim Lead
               </button>
+            ) : inProgress ? (
+              <div className="flex gap-1">
+                <button
+                  onClick={() => void handleQuickAction('no_answer')}
+                  className="rounded bg-rose-500 px-2 py-1 text-[10px] font-bold text-white hover:bg-rose-600"
+                >
+                  No Ans
+                </button>
+                <button
+                  onClick={() => void handleQuickAction('busy')}
+                  className="rounded bg-amber-500 px-2 py-1 text-[10px] font-bold text-white hover:bg-amber-600"
+                >
+                  Busy
+                </button>
+                <button
+                  onClick={() => void handleQuickAction('interested')}
+                  className="rounded bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white hover:bg-emerald-600"
+                >
+                  Int.
+                </button>
+              </div>
             ) : (
               <LeadStatusSelect
                 value={lead.status}

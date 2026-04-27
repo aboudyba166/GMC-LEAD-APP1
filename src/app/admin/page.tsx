@@ -86,6 +86,24 @@ export default function AdminPage() {
     reset({ configs: [createEmptySheetConfiguration()] });
   }
 
+  async function cleanDatabaseOnServer() {
+    if (!window.confirm("CRITICAL: This will delete ALL leads from the server database. This cannot be undone. Proceed?")) {
+      return;
+    }
+    
+    try {
+      const res = await fetch("/api/admin/clean-db", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        alert("Database cleaned successfully. Refresh the dashboard to see changes.");
+      } else {
+        alert("Error: " + (data.error || "Failed to clean database"));
+      }
+    } catch (e) {
+      alert("Network error: Could not reach the server.");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <AppNav />
@@ -298,6 +316,13 @@ export default function AdminPage() {
               className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-rose-800 hover:bg-rose-50 dark:border-rose-900 dark:bg-zinc-900 dark:text-rose-200 dark:hover:bg-rose-950/50"
             >
               Clear all &amp; start over
+            </button>
+            <button
+              type="button"
+              onClick={cleanDatabaseOnServer}
+              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 shadow-sm"
+            >
+              Clean Server Database
             </button>
           </div>
         </form>

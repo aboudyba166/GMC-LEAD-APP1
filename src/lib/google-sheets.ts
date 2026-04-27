@@ -120,8 +120,7 @@ function parseGrid(
   values: string[][]
 ): FetchedSourceRow[] {
   const start = values.length > 0 ? 1 : 0;
-  /** Same phone may appear in multiple rows; the bottom (highest row number) wins. */
-  const byPhone = new Map<string, FetchedSourceRow>();
+  const outRows: FetchedSourceRow[] = [];
   for (let r = start; r < values.length; r++) {
     const row = values[r] ?? [];
     const raw = mapRowWithConfiguration(row, config);
@@ -134,6 +133,7 @@ function parseGrid(
     let createdAt = new Date().toISOString();
     if (raw.receivedAtRaw && raw.receivedAtRaw.trim()) {
       try {
+        // Handle Google Sheets date format (often MM/DD/YYYY or DD/MM/YYYY)
         const parsed = new Date(raw.receivedAtRaw);
         if (!isNaN(parsed.getTime())) {
           createdAt = parsed.toISOString();
@@ -143,8 +143,10 @@ function parseGrid(
       }
     }
 
-    const k = normalizePhoneKey(lead.phoneNumber);
-    byPhone.set(k, {
+    // Use Phone + Service + Row as the unique key to allow same person/service on different rows
+    const k = `${normalizePhoneKey(lead.phoneNumber)}_${(lead.serviceRequired || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '')}_${sheetRow}`;
+    
+    outRows.push({
       lead,
       sourceId: config.id,
       sourceLabel: config.name || config.id,
@@ -153,7 +155,7 @@ function parseGrid(
       createdAt,
     });
   }
-  return Array.from(byPhone.values());
+  return outRows;
 }
 
 /**

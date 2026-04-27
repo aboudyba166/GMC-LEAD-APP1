@@ -146,6 +146,11 @@ function parseGrid(
     // Use Phone + Service + Row as the unique key to allow same person/service on different rows
     const k = `${normalizePhoneKey(lead.phoneNumber)}_${(lead.serviceRequired || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '')}_${sheetRow}`;
     
+    // If createdAt is still "now", it means it wasn't in the sheet or couldn't be parsed.
+    // However, the user wants the time it was added to the original source.
+    // If the sheet doesn't have a timestamp column, we can't "guess" the past time,
+    // but we can ensure that we only set it ONCE when it first enters our system.
+    
     outRows.push({
       lead,
       sourceId: config.id,

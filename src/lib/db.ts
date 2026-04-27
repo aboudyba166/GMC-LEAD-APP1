@@ -301,6 +301,7 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
 
     if (existing) {
       // If it exists, just update the data (like campaign or row number) but don't create a new lead
+      // IMPORTANT: We do NOT update created_at here. It stays as the original time it was first found.
       d.prepare(`
         UPDATE leads SET 
           campaign_data = ?, 

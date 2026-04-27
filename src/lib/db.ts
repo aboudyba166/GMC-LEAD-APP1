@@ -281,28 +281,50 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
   let dupesOrIgnore = 0;
   const now = new Date().toISOString();
 
-  const ins = d.prepare(
-    `INSERT INTO leads
-    (id, campaign_data, full_name, phone, email, service_required, phone_key, status, assigned_to, source_id,
-     created_at, updated_at, fetched_at, first_action_at, follow_up_at, follow_up_note, lost_reason,
-     action_call, whatsapp_sent, reminder_sent, source_row, notes, last_action_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, '', '', '', ?, NULL, NULL)`
-  );
-
   for (const r of toApply) {
     const svc = r.lead.serviceRequired;
-    const id = nanoid();
-    // Use a unique phone_key even for duplicate numbers to allow multiple entries
-    const k = `${normalizePhoneKey(r.lead.phoneNumber) || 'unknown'}_${id}`;
     
-    const res = ins.run(
+    // Create a unique key based on phone + service to allow the same person 
+    // to submit for different services, but avoid duplicating the EXACT same entry.
+    const phoneKey = normalizePhoneKey(r.lead.phoneNumber) || 'unknown';
+    const serviceKey = (svc || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+    const uniqueEntryKey = `${phoneKey}_${serviceKey}`;
+
+    // Check if this EXACT phone + service combination already exists
+    const existing = d.prepare("SELECT id FROM leads WHERE phone_key = ?").get(uniqueEntryKey) as { id: string } | undefined;
+    
+    if (existing) {
+      // If it exists, just update the data (like campaign or row number) but don't create a new lead
+      d.prepare(`
+        UPDATE leads SET 
+          campaign_data = ?, 
+          full_name = ?, 
+          source_row = ?,
+          updated_at = ?
+        WHERE id = ?
+      `).run(r.lead.campaignData, r.lead.fullName, r.sheetRow, now, existing.id);
+      merged++;
+      continue;
+    }
+
+    // If it doesn't exist, create a new lead
+    const id = nanoid();
+    const ins = d.prepare(
+      `INSERT INTO leads
+      (id, campaign_data, full_name, phone, email, service_required, phone_key, status, assigned_to, source_id,
+       created_at, updated_at, fetched_at, first_action_at, follow_up_at, follow_up_note, lost_reason,
+       action_call, whatsapp_sent, reminder_sent, source_row, notes, last_action_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, '', '', '', ?, NULL, NULL)`
+    );
+    
+    ins.run(
       id,
       r.lead.campaignData,
       r.lead.fullName,
       r.lead.phoneNumber,
       svc,
       svc,
-      k,
+      uniqueEntryKey,
       r.initialStatus,
       "",
       r.sourceId,
@@ -311,9 +333,7 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
       now,
       r.sheetRow
     );
-    if (res.changes > 0) {
-      inserted++;
-    }
+    inserted++;
   }
   const duplicatesPrevented = 0;
   bumpDupeTotal(duplicatesPrevented);

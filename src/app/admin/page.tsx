@@ -20,7 +20,7 @@ import {
   removeLegacySheetConfigurationKey,
   saveSheetConfigurations,
 } from "@/lib/sheet-config-browser";
-import { CheckCircle2, Trash2, Plus } from "lucide-react";
+import { CheckCircle2, Trash2, Plus, ChevronDown, ChevronRight } from "lucide-react";
 
 type FormValues = {
   configs: SheetConfiguration[];
@@ -35,6 +35,7 @@ function initialFormConfigs(): SheetConfiguration[] {
 export default function AdminPage() {
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [showSavedBanner, setShowSavedBanner] = useState(false);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
   const savedBannerTid = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { control, register, handleSubmit, reset, setValue, formState } = useForm<FormValues>({
@@ -139,116 +140,136 @@ export default function AdminPage() {
 
           {fields.map((field, index) => {
             const nameLabel = (watched?.[index]?.name && String(watched?.[index]?.name).trim()) || "";
+            const isExpanded = expandedIndex === index;
+            
             return (
             <fieldset
               key={field.id}
-              className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50"
+              className={cn(
+                "overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-all dark:border-zinc-800 dark:bg-zinc-900/50",
+                !isExpanded && "hover:border-zinc-300 dark:hover:border-zinc-700"
+              )}
             >
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <legend className="text-sm font-semibold">
-                  Connection {index + 1}
-                  {nameLabel ? <span className="font-normal text-zinc-500"> — {nameLabel}</span> : null}
-                </legend>
-                <button
-                  type="button"
-                  onClick={() => remove(index)}
-                  className="rounded p-1 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                  title="Remove this connection from the list (Save to persist)"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+              <div 
+                className={cn(
+                  "flex cursor-pointer items-center justify-between gap-2 px-4 py-3",
+                  isExpanded ? "border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30" : ""
+                )}
+                onClick={() => setExpandedIndex(isExpanded ? null : index)}
+              >
+                <div className="flex items-center gap-2">
+                  {isExpanded ? <ChevronDown className="h-4 w-4 text-zinc-400" /> : <ChevronRight className="h-4 w-4 text-zinc-400" />}
+                  <legend className="text-sm font-semibold">
+                    Connection {index + 1}
+                    {nameLabel ? <span className="ml-2 font-normal text-zinc-500">— {nameLabel}</span> : null}
+                  </legend>
+                </div>
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => remove(index)}
+                    className="rounded p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                    title="Remove this connection"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block text-xs font-medium text-zinc-500">
-                  Connection name
-                  <input
-                    {...register(`configs.${index}.name`)}
-                    className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-                    placeholder="e.g. Main leads tab"
-                    required
-                  />
-                </label>
-                <label className="block text-xs font-medium text-zinc-500">
-                  Spreadsheet ID or URL
-                  <input
-                    {...register(`configs.${index}.spreadsheetId`)}
-                    onBlur={() => normalizeIdField(index)}
-                    className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm font-mono text-xs dark:border-zinc-600 dark:bg-zinc-800"
-                    placeholder="Paste full Google Sheets link or the ID"
-                    required
-                  />
-                </label>
-                <label className="block text-xs font-medium text-zinc-500">
-                  Tab GID (optional)
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="from URL: …#gid=626655690"
-                    {...register(`configs.${index}.sheetGid`, {
-                      setValueAs: (v) => {
-                        if (v === "" || v == null) return undefined;
-                        const n = Number(v);
-                        return Number.isFinite(n) ? n : undefined;
-                      },
-                    })}
-                    className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm font-mono dark:border-zinc-600 dark:bg-zinc-800"
-                  />
-                </label>
-                <label className="sm:col-span-2 block text-xs font-medium text-zinc-500">
-                  Tab name (required if GID is empty)
-                  <input
-                    {...register(`configs.${index}.tabName`, {
-                      validate: (v, form) => {
-                        const list = (form as FormValues).configs;
-                        const gid = list?.[index]?.sheetGid;
-                        if (gid != null && Number.isFinite(Number(gid))) return true;
-                        return (v && String(v).trim().length > 0) || "Set tab name, or set Tab GID from the sheet URL";
-                      },
-                    })}
-                    className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-                    placeholder="Sheet1 (ignored when GID is set)"
-                  />
-                </label>
-              </div>
+              {isExpanded && (
+                <div className="p-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block text-xs font-medium text-zinc-500">
+                      Connection name
+                      <input
+                        {...register(`configs.${index}.name`)}
+                        className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                        placeholder="e.g. Main leads tab"
+                        required
+                      />
+                    </label>
+                    <label className="block text-xs font-medium text-zinc-500">
+                      Spreadsheet ID or URL
+                      <input
+                        {...register(`configs.${index}.spreadsheetId`)}
+                        onBlur={() => normalizeIdField(index)}
+                        className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm font-mono text-xs dark:border-zinc-600 dark:bg-zinc-800"
+                        placeholder="Paste full Google Sheets link or the ID"
+                        required
+                      />
+                    </label>
+                    <label className="block text-xs font-medium text-zinc-500">
+                      Tab GID (optional)
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="from URL: …#gid=626655690"
+                        {...register(`configs.${index}.sheetGid`, {
+                          setValueAs: (v) => {
+                            if (v === "" || v == null) return undefined;
+                            const n = Number(v);
+                            return Number.isFinite(n) ? n : undefined;
+                          },
+                        })}
+                        className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm font-mono dark:border-zinc-600 dark:bg-zinc-800"
+                      />
+                    </label>
+                    <label className="sm:col-span-2 block text-xs font-medium text-zinc-500">
+                      Tab name (required if GID is empty)
+                      <input
+                        {...register(`configs.${index}.tabName`, {
+                          validate: (v, form) => {
+                            const list = (form as FormValues).configs;
+                            const gid = list?.[index]?.sheetGid;
+                            if (gid != null && Number.isFinite(Number(gid))) return true;
+                            return (v && String(v).trim().length > 0) || "Set tab name, or set Tab GID from the sheet URL";
+                          },
+                        })}
+                        className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                        placeholder="Sheet1 (ignored when GID is set)"
+                      />
+                    </label>
+                  </div>
 
-              <p className="mb-2 mt-4 text-xs font-medium text-zinc-500">Column letters (A–Z, AA, …)</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {(
-                  [
-                    { key: "campaign", label: "Campaign data (optional)", emptyOk: true },
-                    { key: "fullName", label: "Full name", emptyOk: false },
-                    { key: "phone", label: "Phone number", emptyOk: false },
-                    { key: "serviceRequired", label: "Service required", emptyOk: false },
-                    {
-                      key: "existingStatus",
-                      label: "Existing status / feedback (optional)",
-                      emptyOk: true,
-                    },
-                  ] as const
-                ).map((col) => (
-                  <label key={col.key} className="block text-xs font-medium text-zinc-500">
-                    {col.label}
-                    <input
-                      {...register(`configs.${index}.columns.${col.key}`, {
-                        validate: (v) => {
-                          const s = String(v);
-                          if (col.emptyOk) {
-                            return validateColumnLetterOrEmpty(s) || "Use column letter(s) or leave blank";
-                          }
-                          return !s.trim() || validateColumnLetter(s) || "Use column letter(s) A–Z";
+                  <p className="mb-2 mt-4 text-xs font-medium text-zinc-500">Column letters (A–Z, AA, …)</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(
+                      [
+                        { key: "campaign", label: "Campaign data (optional)", emptyOk: true },
+                        { key: "fullName", label: "Full name", emptyOk: false },
+                        { key: "phone", label: "Phone number", emptyOk: false },
+                        { key: "serviceRequired", label: "Service required", emptyOk: false },
+                        {
+                          key: "existingStatus",
+                          label: "Existing status / feedback (optional)",
+                          emptyOk: true,
                         },
-                      })}
-                      className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm font-mono uppercase dark:border-zinc-600 dark:bg-zinc-800"
-                      maxLength={3}
-                    />
-                  </label>
-                ))}
-              </div>
-              <p className="mt-1 text-[11px] text-zinc-500">
-                When the status column is set, synced rows use that cell to set the app status. Blank cell →
-                &quot;New Lead&quot; for new phones. Leave empty to always use &quot;New Lead&quot; for new phones.
-              </p>
+                      ] as const
+                    ).map((col) => (
+                      <label key={col.key} className="block text-xs font-medium text-zinc-500">
+                        {col.label}
+                        <input
+                          {...register(`configs.${index}.columns.${col.key}`, {
+                            validate: (v) => {
+                              const s = String(v);
+                              if (col.emptyOk) {
+                                return validateColumnLetterOrEmpty(s) || "Use column letter(s) or leave blank";
+                              }
+                              return !s.trim() || validateColumnLetter(s) || "Use column letter(s) A–Z";
+                            },
+                          })}
+                          className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm font-mono uppercase dark:border-zinc-600 dark:bg-zinc-800"
+                          maxLength={3}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[11px] text-zinc-500">
+                    When the status column is set, synced rows use that cell to set the app status. Blank cell →
+                    &quot;New Lead&quot; for new phones. Leave empty to always use &quot;New Lead&quot; for new phones.
+                  </p>
+                </div>
+              )}
             </fieldset>
             );
           })}

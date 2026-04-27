@@ -215,7 +215,10 @@ export function listLeadsPage(params: ListParams): { items: LeadRecord[]; total:
   const rows = d
     .prepare(
       `SELECT * FROM leads ${where}
-       ORDER BY created_at DESC, source_row DESC
+       ORDER BY 
+         CASE WHEN created_at IS NOT NULL AND created_at != '' THEN 0 ELSE 1 END,
+         created_at DESC, 
+         source_row DESC
        LIMIT ? OFFSET ?`
     )
     .all(...args, pageSize, offset) as Row[];

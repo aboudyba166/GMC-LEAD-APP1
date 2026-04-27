@@ -131,8 +131,8 @@ function parseGrid(
     const initialStatus = resolveInitialStatus(raw.existingStatusRaw, raw.statusColumnMapped);
     const sheetRow = r + 1;
     
-    // Parse receivedAt from sheet if available, otherwise use now
-    let createdAt = new Date().toISOString();
+    // Parse receivedAt from sheet if available, otherwise use empty string
+    let createdAt = "";
     if (raw.receivedAtRaw && raw.receivedAtRaw.trim()) {
       try {
         // Handle Google Sheets date format (often MM/DD/YYYY or DD/MM/YYYY)
@@ -141,7 +141,7 @@ function parseGrid(
           createdAt = parsed.toISOString();
         }
       } catch {
-        /* fallback to now */
+        /* fallback to empty */
       }
     }
 

@@ -5,7 +5,7 @@ import { Check, Copy, Lock, UserCheck, MessageSquarePlus } from "lucide-react";
 import { LeadStatusSelect } from "./lead-status-select";
 import { cn } from "@/lib/utils";
 import { isoToLocalDatetimeValue, localDatetimeValueToIso } from "@/lib/datetime-input";
-import { isBookedStatus, needsFollowUpFields, needsLostReasonFields, type LeadStatus } from "@/lib/lead-status";
+import { LEAD_STATUS, isBookedStatus, needsFollowUpFields, needsLostReasonFields, type LeadStatus } from "@/lib/lead-status";
 import type { LeadRecord, YesNo } from "@/lib/types";
 
 const AGENT_PLACEHOLDERS = [
@@ -47,8 +47,8 @@ function fmtShort(iso: string | null) {
 
 export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props) {
   const booked = isBookedStatus(lead.status);
-  const inProgress = lead.status === "in_progress";
-  const isNew = lead.status === "new";
+  const inProgress = lead.status === LEAD_STATUS.IN_PROGRESS;
+  const isNew = lead.status === LEAD_STATUS.NEW_LEAD;
   const [localFollowAt, setLocalFollowAt] = useState(isoToLocalDatetimeValue(lead.followUpAt));
   const [localFollowNote, setLocalFollowNote] = useState(lead.followUpNote ?? "");
   const [localLost, setLocalLost] = useState(lead.lostReason ?? "");
@@ -80,7 +80,7 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
       return;
     }
     await onUpdate(lead.id, { 
-      status: "in_progress", 
+      status: LEAD_STATUS.IN_PROGRESS, 
       assignedTo: currentAgent,
       lastActionAt: new Date().toISOString()
     });

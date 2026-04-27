@@ -5,6 +5,7 @@
 
 export const LEAD_STATUS = {
   NEW_LEAD: "New Lead",
+  IN_PROGRESS: "In Progress",
   NO_ANSWER: "لم يتم الرد",
   INQUIRY: "استفسار",
   WILL_CALL_BACK: "he / she will call back",
@@ -20,6 +21,7 @@ export type LeadStatus = (typeof LEAD_STATUS)[keyof typeof LEAD_STATUS];
 
 export const ALL_STATUSES: LeadStatus[] = [
   LEAD_STATUS.NEW_LEAD,
+  LEAD_STATUS.IN_PROGRESS,
   LEAD_STATUS.NO_ANSWER,
   LEAD_STATUS.INQUIRY,
   LEAD_STATUS.WILL_CALL_BACK,
@@ -35,6 +37,7 @@ export type StatusCategory = "active" | "success" | "lost" | "invalid";
 
 export const STATUS_CATEGORY: Record<LeadStatus, StatusCategory> = {
   [LEAD_STATUS.NEW_LEAD]: "active",
+  [LEAD_STATUS.IN_PROGRESS]: "active",
   [LEAD_STATUS.NO_ANSWER]: "active",
   [LEAD_STATUS.INQUIRY]: "active",
   [LEAD_STATUS.WILL_CALL_BACK]: "active",
@@ -64,6 +67,7 @@ export const CATEGORY_ORDER: { category: StatusCategory; label: string; descript
 export const STATUSES_BY_CATEGORY: Record<StatusCategory, LeadStatus[]> = {
   active: [
     LEAD_STATUS.NEW_LEAD,
+    LEAD_STATUS.IN_PROGRESS,
     LEAD_STATUS.NO_ANSWER,
     LEAD_STATUS.INQUIRY,
     LEAD_STATUS.WILL_CALL_BACK,
@@ -78,9 +82,9 @@ export type QuickFilterTab = "all" | "new" | "follow_up" | "won" | "lost" | "inv
 
 export function statusesForTab(tab: QuickFilterTab): LeadStatus[] | "all" {
   if (tab === "all") return "all";
-  if (tab === "new") return [LEAD_STATUS.NEW_LEAD];
+  if (tab === "new") return [LEAD_STATUS.NEW_LEAD, LEAD_STATUS.IN_PROGRESS];
   if (tab === "follow_up")
-    return [LEAD_STATUS.NO_ANSWER, LEAD_STATUS.INQUIRY, LEAD_STATUS.WILL_CALL_BACK];
+    return [LEAD_STATUS.IN_PROGRESS, LEAD_STATUS.NO_ANSWER, LEAD_STATUS.INQUIRY, LEAD_STATUS.WILL_CALL_BACK];
   if (tab === "won") return [LEAD_STATUS.BOOKED];
   if (tab === "lost") return [LEAD_STATUS.NOT_INTERESTED, LEAD_STATUS.PRICE_HIGH];
   if (tab === "invalid")

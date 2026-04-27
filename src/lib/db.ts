@@ -266,20 +266,10 @@ function dedupeSyncRowsLastWins(rows: SyncIngestionRow[]): {
   rows: SyncIngestionRow[];
   duplicatesInBatch: number;
 } {
-  const withKey: SyncIngestionRow[] = [];
-  for (const r of rows) {
-    const k = normalizePhoneKey(r.lead.phoneNumber);
-    if (!k) continue;
-    withKey.push(r);
-  }
-  const m = new Map<string, SyncIngestionRow>();
-  for (const r of withKey) {
-    m.set(normalizePhoneKey(r.lead.phoneNumber)!, r);
-  }
-  const deduped = Array.from(m.values());
+  // Deduplication disabled: return all rows as unique
   return {
-    rows: deduped,
-    duplicatesInBatch: withKey.length - deduped.length,
+    rows: rows,
+    duplicatesInBatch: 0,
   };
 }
 
@@ -291,103 +281,41 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
   let dupesOrIgnore = 0;
   const now = new Date().toISOString();
 
-  const getByKey = d.prepare("SELECT * FROM leads WHERE phone_key = ?");
   const ins = d.prepare(
-    `INSERT OR IGNORE INTO leads
+    `INSERT INTO leads
     (id, campaign_data, full_name, phone, email, service_required, phone_key, status, assigned_to, source_id,
      created_at, updated_at, fetched_at, first_action_at, follow_up_at, follow_up_note, lost_reason,
      action_call, whatsapp_sent, reminder_sent, source_row, notes, last_action_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, '', '', '', ?, NULL, NULL)`
   );
-  const updDataOnly = d.prepare(
-    `UPDATE leads SET
-      campaign_data = ?,
-      full_name = ?,
-      phone = ?,
-      service_required = ?,
-      email = ?,
-      source_id = ?,
-      source_row = ?
-     WHERE phone_key = ?`
-  );
-  const updDataAndStatus = d.prepare(
-    `UPDATE leads SET
-      campaign_data = ?,
-      full_name = ?,
-      phone = ?,
-      service_required = ?,
-      email = ?,
-      source_id = ?,
-      status = ?,
-      updated_at = ?,
-      source_row = ?
-     WHERE phone_key = ?`
-  );
 
   for (const r of toApply) {
-    const k = normalizePhoneKey(r.lead.phoneNumber);
-    if (!k) {
-      continue;
-    }
     const svc = r.lead.serviceRequired;
-    const prev = getByKey.get(k) as Row | undefined;
-    if (!prev) {
-      const id = nanoid();
-      const res = ins.run(
-        id,
-        r.lead.campaignData,
-        r.lead.fullName,
-        r.lead.phoneNumber,
-        svc,
-        svc,
-        k,
-        r.initialStatus,
-        "",
-        r.sourceId,
-        now,
-        now,
-        now,
-        r.sheetRow
-      );
-      if (res.changes > 0) {
-        inserted++;
-      } else {
-        dupesOrIgnore++;
-      }
-      continue;
+    const id = nanoid();
+    // Use a unique phone_key even for duplicate numbers to allow multiple entries
+    const k = `${normalizePhoneKey(r.lead.phoneNumber) || 'unknown'}_${id}`;
+    
+    const res = ins.run(
+      id,
+      r.lead.campaignData,
+      r.lead.fullName,
+      r.lead.phoneNumber,
+      svc,
+      svc,
+      k,
+      r.initialStatus,
+      "",
+      r.sourceId,
+      now,
+      now,
+      now,
+      r.sheetRow
+    );
+    if (res.changes > 0) {
+      inserted++;
     }
-
-    const prevNorm = normalizeStatusFromDb(prev.status);
-    const nextStatus = r.initialStatus;
-    const statusChanged = prevNorm !== nextStatus;
-    if (statusChanged) {
-      updDataAndStatus.run(
-        r.lead.campaignData,
-        r.lead.fullName,
-        r.lead.phoneNumber,
-        svc,
-        svc,
-        r.sourceId,
-        nextStatus,
-        now,
-        r.sheetRow,
-        k
-      );
-    } else {
-      updDataOnly.run(
-        r.lead.campaignData,
-        r.lead.fullName,
-        r.lead.phoneNumber,
-        svc,
-        svc,
-        r.sourceId,
-        r.sheetRow,
-        k
-      );
-    }
-    merged++;
   }
-  const duplicatesPrevented = dupesInBatch + dupesOrIgnore;
+  const duplicatesPrevented = 0;
   bumpDupeTotal(duplicatesPrevented);
   d.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("last_sync_at", now);
   return { inserted, merged, duplicatesPrevented, at: now };

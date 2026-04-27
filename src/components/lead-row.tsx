@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Lock, UserCheck, MessageSquarePlus } from "lucide-react";
+import { Check, Copy, Lock, UserCheck, MessageSquarePlus, MessageCircle } from "lucide-react";
 import { LeadStatusSelect } from "./lead-status-select";
 import { cn } from "@/lib/utils";
 import { isoToLocalDatetimeValue, localDatetimeValueToIso } from "@/lib/datetime-input";
@@ -49,6 +49,10 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
   const booked = isBookedStatus(lead.status);
   const inProgress = lead.status === LEAD_STATUS.IN_PROGRESS;
   const isNew = lead.status === LEAD_STATUS.NEW_LEAD;
+  
+  // Check if follow-up is due today or overdue
+  const isFollowUpDue = lead.followUpAt && new Date(lead.followUpAt) <= new Date();
+
   const [localFollowAt, setLocalFollowAt] = useState(isoToLocalDatetimeValue(lead.followUpAt));
   const [localFollowNote, setLocalFollowNote] = useState(lead.followUpNote ?? "");
   const [localLost, setLocalLost] = useState(lead.lostReason ?? "");
@@ -71,7 +75,16 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
   }, []);
 
   async function setStatus(s: LeadStatus) {
-    await onUpdate(lead.id, { status: s });
+    const patch: Record<string, any> = { status: s };
+    
+    // Auto-set follow-up date to 24h from now for specific statuses
+    if (s === LEAD_STATUS.WILL_CALL_BACK || s === LEAD_STATUS.NO_ANSWER) {
+      const tomorrow = new Date();
+      tomorrow.setHours(tomorrow.getHours() + 24);
+      patch.followUpAt = tomorrow.toISOString();
+    }
+    
+    await onUpdate(lead.id, patch);
   }
 
   async function claimLead() {
@@ -86,12 +99,20 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
     });
   }
 
+  const openWhatsAppTemplate = () => {
+    if (!lead.phoneNumber) return;
+    const message = encodeURIComponent("مرحباً، نحن نتواصل معك من مجمع جاردينيا الطبي (Gardenia Medical Complex) بخصوص طلبك. كيف يمكننا مساعدتك اليوم؟");
+    const phone = lead.phoneNumber.replace(/\D/g, "");
+    window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
+  };
+
   return (
     <tr
       className={cn(
         "border-b border-zinc-100 transition-colors dark:border-zinc-800/80",
         booked && "bg-emerald-50/50 opacity-[0.88] dark:bg-emerald-950/20 dark:opacity-90",
-        inProgress && "bg-sky-50/40 dark:bg-sky-950/10"
+        inProgress && "bg-sky-50/40 dark:bg-sky-950/10",
+        isFollowUpDue && !booked && "bg-amber-50/60 dark:bg-amber-950/10 border-l-4 border-l-amber-500"
       )}
     >
       <td
@@ -114,6 +135,11 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
         {inProgress && (
           <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-sky-600 dark:text-sky-400">
             <UserCheck className="h-3 w-3" /> In Progress
+          </span>
+        )}
+        {isFollowUpDue && !booked && (
+          <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400 font-bold">
+            ⚠️ Due
           </span>
         )}
       </td>
@@ -162,7 +188,10 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
                     void onUpdate(lead.id, { followUpAt: iso });
                   }, 600);
                 }}
-                className="w-full max-w-[200px] rounded border border-amber-200 bg-amber-50/50 px-1.5 py-1 text-[11px] dark:border-amber-800 dark:bg-amber-950/30"
+                className={cn(
+                  "w-full max-w-[200px] rounded border px-1.5 py-1 text-[11px]",
+                  isFollowUpDue ? "border-amber-400 bg-amber-100 dark:bg-amber-900/40" : "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30"
+                )}
                 aria-label="Follow-up time"
               />
               <input
@@ -226,17 +255,30 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
               </option>
             ))}
           </select>
-          {lead.phoneNumber && (
-            <a
-              href={`https://wa.me/${lead.phoneNumber.replace(/\D/g, "")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-1 rounded bg-emerald-500 px-1 py-0.5 text-[10px] font-bold text-white hover:bg-emerald-600"
-            >
-              <MessageSquarePlus className="h-3 w-3" />
-              Chat
-            </a>
-          )}
+          <div className="flex gap-1">
+            {lead.phoneNumber && (
+              <a
+                href={`https://wa.me/${lead.phoneNumber.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Direct WhatsApp"
+                className="flex-1 inline-flex items-center justify-center rounded bg-emerald-500 px-1 py-0.5 text-[10px] font-bold text-white hover:bg-emerald-600"
+              >
+                <MessageSquarePlus className="h-3 w-3" />
+              </a>
+            )}
+            {lead.phoneNumber && (
+              <button
+                type="button"
+                onClick={openWhatsAppTemplate}
+                title="WhatsApp Arabic Template"
+                className="flex-1 inline-flex items-center justify-center rounded bg-sky-500 px-1 py-0.5 text-[10px] font-bold text-white hover:bg-sky-600"
+              >
+                <MessageCircle className="h-3 w-3" />
+                AR
+              </button>
+            )}
+          </div>
         </div>
       </td>
       <td className="px-1 py-1">

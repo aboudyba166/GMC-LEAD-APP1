@@ -390,18 +390,18 @@ export function LeadCommandCenter() {
                     "Campaign",
                     "Full name",
                     "Phone",
-                    "Service required",
-                    "Status & next action",
-                    "1st action (Call)",
-                    "Whatsapp",
-                    "Reminder",
-                    "Last updated",
-                    "Assigned to",
-                    "Action",
+                    "Service",
+                    "Status & Action",
+                    "1st Call",
+                    "WA",
+                    "Rem.",
+                    "Time",
+                    "Agent",
+                    "",
                   ].map((h) => (
                     <th
                       key={h}
-                      className="whitespace-nowrap px-2 py-2.5 text-xs font-semibold text-zinc-500"
+                      className="whitespace-nowrap px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400"
                     >
                       {h}
                     </th>

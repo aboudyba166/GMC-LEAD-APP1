@@ -113,6 +113,8 @@ export type FetchedSourceRow = {
   initialStatus: LeadStatus;
   /** 1-based Google Sheet row (row 1 is the first line in the tab). */
   sheetRow: number;
+  /** Optional override for creation time from source sheet */
+  createdAt?: string;
 };
 
 function parseGrid(

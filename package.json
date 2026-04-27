@@ -1,0 +1,48 @@
+{
+  "name": "lead-command-center",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "dev:turbo": "next dev -p 3000 --turbopack",
+    "dev:3001": "next dev -p 3001",
+    "dev:3001:turbo": "next dev -p 3001 --turbopack",
+    "dev:lan": "next dev -p 3000 -H 0.0.0.0",
+    "dev:lan:turbo": "next dev -p 3000 -H 0.0.0.0 --turbopack",
+    "dev:clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next dev -p 3000",
+    "rebuild": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next build",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0",
+    "start:local": "next start -H 0.0.0.0 -p 3000",
+    "start:lan": "next start -p 3000 -H 0.0.0.0",
+    "lint": "next lint",
+    "zip:hostinger": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/zip-for-hostinger.ps1",
+    "deploy:ssh": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy-hostinger-ssh.ps1"
+  },
+  "dependencies": {
+    "@radix-ui/react-select": "^2.1.4",
+    "better-sqlite3": "^11.7.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
+    "nanoid": "^5.0.9",
+    "next": "^15.1.0",
+    "next-themes": "^0.4.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.54.2",
+    "tailwind-merge": "^2.5.5"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.1",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.16",
+    "typescript": "^5.7.2"
+  }
+}

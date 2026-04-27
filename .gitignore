@@ -1,0 +1,6 @@
+.next/
+out/
+node_modules/
+data/
+.env*.local
+lead-command-center-hostinger.zip

@@ -205,10 +205,16 @@ export function LeadCommandCenter() {
 
       if (j.inserted && j.inserted > 0) {
         if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("New Leads Received!", {
-            body: `Successfully pulled ${j.inserted} new leads from Google Sheets.`,
-            icon: "/favicon.ico",
+          const n = new Notification("GMC: New Lead Received!", {
+            body: `You have ${j.inserted} new lead(s) waiting for response.`,
+            icon: "/assets/logo.png",
+            requireInteraction: true, // Keeps notification visible until user clicks
+            silent: false,
           });
+          n.onclick = () => {
+            window.focus();
+            n.close();
+          };
         }
       }
 

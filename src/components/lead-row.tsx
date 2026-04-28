@@ -61,24 +61,35 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
     }
 
     const updateTimer = () => {
-      // Only run timer if createdAt is a valid ISO string (contains 'T')
-      if (!lead.createdAt || !lead.createdAt.includes("T")) {
+      if (!isNew || !!lead.firstActionAt || !lead.createdAt) {
         setTimeElapsed("");
         return;
       }
-      
+
+      // Parse Column W timestamp (e.g., "4/28/2026 10:41:48 am")
       const start = new Date(lead.createdAt).getTime();
       const now = new Date().getTime();
-      const diff = Math.floor((now - start) / 1000); // seconds
-
-      const mins = Math.floor(diff / 60);
-      const secs = diff % 60;
       
-      if (mins < 15) setTimeColor("text-emerald-500 font-bold");
-      else if (mins < 60) setTimeColor("text-amber-500 font-bold");
-      else setTimeColor("text-rose-500 font-bold animate-pulse");
+      if (isNaN(start)) {
+        setTimeElapsed("");
+        return;
+      }
 
-      setTimeElapsed(`${mins}m ${secs}s`);
+      const diff = Math.floor((now - start) / 1000); // seconds
+      const mins = Math.floor(diff / 60);
+      const secs = Math.abs(diff % 60);
+      
+      // Critical Window: 5 minutes (300 seconds)
+      if (diff < 300) {
+        setTimeColor("text-emerald-500 font-bold animate-pulse");
+      } else if (diff < 3600) {
+        setTimeColor("text-amber-500 font-bold");
+      } else {
+        setTimeColor("text-rose-500 font-bold");
+      }
+
+      const displayMins = Math.abs(mins);
+      setTimeElapsed(`${displayMins}m ${secs}s`);
     };
 
     updateTimer();

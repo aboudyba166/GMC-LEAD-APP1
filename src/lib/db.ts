@@ -175,6 +175,7 @@ export type ListParams = {
   q?: string;
   status?: string;
   bucket?: string;
+  sort?: "asc" | "desc";
 };
 
 export function listLeadsPage(params: ListParams): { items: LeadRecord[]; total: number } {
@@ -212,13 +213,15 @@ export function listLeadsPage(params: ListParams): { items: LeadRecord[]; total:
   const total = (
     d.prepare(`SELECT count(*) as n FROM leads ${where}`).get(...args) as { n: number }
   ).n;
+  
+  const orderDir = sort.toUpperCase() === "ASC" ? "ASC" : "DESC";
+  
   const rows = d
     .prepare(
       `SELECT * FROM leads ${where}
        ORDER BY 
-         CASE WHEN created_at IS NOT NULL AND created_at != '' THEN 0 ELSE 1 END ASC,
-         created_at DESC,
-         source_row DESC
+         created_at ${orderDir},
+         source_row ${orderDir}
        LIMIT ? OFFSET ?`
     )
     .all(...args, pageSize, offset) as Row[];

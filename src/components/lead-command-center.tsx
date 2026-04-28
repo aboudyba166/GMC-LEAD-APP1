@@ -105,6 +105,7 @@ export function LeadCommandCenter() {
         pageSize: String(pageSize),
         q: qDebounced,
         bucket,
+        sort: sortOrder,
       });
       const res = await fetch(`/api/leads?${params}`);
       if (!res.ok) throw new Error("Failed to load");
@@ -122,7 +123,7 @@ export function LeadCommandCenter() {
     } finally {
       setLoading(false);
     }
-  }, [page, qDebounced, bucket]);
+  }, [page, qDebounced, bucket, sortOrder]);
 
   const loadMetrics = useCallback(async () => {
     try {
@@ -439,9 +440,20 @@ export function LeadCommandCenter() {
                   ].map((h) => (
                     <th
                       key={h}
-                      className="whitespace-nowrap px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400"
+                      className={cn(
+                        "whitespace-nowrap px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400",
+                        h === "Time" && "cursor-pointer hover:text-sky-600 transition-colors"
+                      )}
+                      onClick={h === "Time" ? () => setSortOrder(sortOrder === "desc" ? "asc" : "desc") : undefined}
                     >
-                      {h}
+                      <div className="flex items-center gap-1">
+                        {h}
+                        {h === "Time" && (
+                          <span className="text-[8px]">
+                            {sortOrder === "desc" ? "▼" : "▲"}
+                          </span>
+                        )}
+                      </div>
                     </th>
                   ))}
                 </tr>

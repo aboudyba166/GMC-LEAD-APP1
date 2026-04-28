@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
     const q = searchParams.get("q") || undefined;
     const status = searchParams.get("status") || undefined;
     const bucket = searchParams.get("bucket") || undefined;
-    const { items, total } = listLeadsPage({ page, pageSize, q, status, bucket: bucket || undefined });
+    const sort = (searchParams.get("sort") as "asc" | "desc") || "desc";
+    const { items, total } = listLeadsPage({ page, pageSize, q, status, bucket: bucket || undefined, sort });
     return NextResponse.json({ items, total, page, pageSize });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

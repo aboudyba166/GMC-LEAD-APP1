@@ -20,7 +20,7 @@ import {
   removeLegacySheetConfigurationKey,
   saveSheetConfigurations,
 } from "@/lib/sheet-config-browser";
-import { CheckCircle2, Trash2, Plus, ChevronDown, ChevronRight, Download, Upload } from "lucide-react";
+import { CheckCircle2, Trash2, Plus, ChevronDown, ChevronRight, Download, Upload, Play, AlertCircle, Loader2 } from "lucide-react";
 import { nanoid } from "nanoid";
 
 type FormValues = {
@@ -39,12 +39,44 @@ export default function AdminPage() {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [isLocked, setIsLocked] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [testingIndex, setTestingIndex] = useState<number | null>(null);
+  const [testResults, setTestResults] = useState<Record<number, { ok: boolean; message: string }>>({});
   const savedBannerTid = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { control, register, handleSubmit, reset, setValue, formState } = useForm<FormValues>({
+  const { control, register, handleSubmit, reset, setValue, formState, getValues } = useForm<FormValues>({
     defaultValues: { configs: [] },
   });
+
+  async function testConnection(index: number) {
+    const config = getValues(`configs.${index}`);
+    setTestingIndex(index);
+    setTestResults(prev => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+
+    try {
+      const res = await fetch("/api/admin/test-connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config }),
+      });
+      const data = await res.json();
+      setTestResults(prev => ({
+        ...prev,
+        [index]: { ok: data.ok, message: data.ok ? data.message : data.error }
+      }));
+    } catch (e) {
+      setTestResults(prev => ({
+        ...prev,
+        [index]: { ok: false, message: "Network error while testing" }
+      }));
+    } finally {
+      setTestingIndex(null);
+    }
+  }
   const { isDirty } = formState;
   const { fields, append, remove } = useFieldArray({ control, name: "configs" });
   const watched = useWatch({ control, name: "configs" });
@@ -383,6 +415,27 @@ export default function AdminPage() {
                 <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
+                    onClick={() => testConnection(index)}
+                    disabled={testingIndex === index}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase transition-all",
+                      testResults[index]?.ok 
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                        : testResults[index] 
+                          ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+                          : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+                    )}
+                    title="Test this connection"
+                  >
+                    {testingIndex === index ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Play className="h-3 w-3" />
+                    )}
+                    {testResults[index]?.ok ? "Success" : testResults[index] ? "Failed" : "Test"}
+                  </button>
+                  <button
+                    type="button"
                     disabled={isLocked}
                     onClick={() => remove(index)}
                     className="rounded p-1.5 text-rose-600 hover:bg-rose-50 disabled:opacity-40 dark:hover:bg-rose-950/40"
@@ -394,7 +447,18 @@ export default function AdminPage() {
               </div>
 
               {isExpanded && (
-              <div className="p-4">
+                <div className="p-4">
+                  {testResults[index] && (
+                    <div className={cn(
+                      "mb-4 flex items-start gap-2 rounded-lg p-3 text-xs font-medium",
+                      testResults[index].ok 
+                        ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                        : "bg-rose-50 text-rose-800 dark:bg-rose-950/30 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                    )}>
+                      {testResults[index].ok ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
+                      <span>{testResults[index].message}</span>
+                    </div>
+                  )}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block text-xs font-medium text-zinc-500">
                       Connection name

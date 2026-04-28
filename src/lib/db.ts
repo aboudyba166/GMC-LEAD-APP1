@@ -317,19 +317,20 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
     const existing = d.prepare("SELECT id FROM leads WHERE phone_key = ?").get(uniqueEntryKey) as { id: string } | undefined;
     
     // Use source createdAt if provided, else use now
-    const leadCreatedAt = r.createdAt || now;
+    const leadCreatedAt = r.createdAt && r.createdAt.trim() ? r.createdAt : now;
 
     if (existing) {
       // If it exists, just update the data (like campaign or row number) but don't create a new lead
-      // IMPORTANT: We do NOT update created_at here. It stays as the original time it was first found.
+      // IMPORTANT: We update created_at only if the new one is valid and the existing one is empty or 'now'
       d.prepare(`
         UPDATE leads SET 
           campaign_data = ?, 
           full_name = ?, 
           source_row = ?,
+          created_at = CASE WHEN (created_at IS NULL OR created_at = '' OR created_at LIKE '%T%') AND (? IS NOT NULL AND ? != '') THEN ? ELSE created_at END,
           updated_at = ?
         WHERE id = ?
-      `).run(r.lead.campaignData, r.lead.fullName, r.sheetRow, now, existing.id);
+      `).run(r.lead.campaignData, r.lead.fullName, r.sheetRow, leadCreatedAt, leadCreatedAt, leadCreatedAt, now, existing.id);
       merged++;
       continue;
     }

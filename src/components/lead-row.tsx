@@ -385,8 +385,8 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
       </td>
       <td className="whitespace-nowrap px-2 py-2 text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
         <div className="flex flex-col">
-          <span className={cn(lead.createdAt && "text-sky-600 font-bold dark:text-sky-400")}>
-            {lead.createdAt || "—"}
+          <span className={cn(lead.createdAt && lead.createdAt !== "—" && "text-sky-600 font-bold dark:text-sky-400")}>
+            {lead.createdAt && lead.createdAt.trim() ? lead.createdAt : "—"}
           </span>
           {lead.lastActionAt && (
             <span className="text-[9px] text-zinc-400 italic">

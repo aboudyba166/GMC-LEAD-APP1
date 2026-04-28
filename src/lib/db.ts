@@ -141,7 +141,7 @@ function zYesNo(s: string | null | undefined): YesNo {
 
 function rowToLead(r: Row): LeadRecord {
   const st = normalizeStatusFromDb(r.status);
-  const z = (x: string | null | undefined) => (x && x.trim() ? x : null);
+  const z = (x: string | null | undefined) => (x && x.trim() ? x.trim() : null);
   const svc = (r.service_required && r.service_required.trim()) || r.email || "";
   return {
     id: r.id,
@@ -154,7 +154,7 @@ function rowToLead(r: Row): LeadRecord {
     assignedTo: r.assigned_to,
     sourceId: r.source_id,
     sourceRow: r.source_row ?? null,
-    createdAt: r.created_at,
+    createdAt: z(r.created_at) || "",
     fetchedAt: r.fetched_at || r.created_at,
     firstActionAt: z(r.first_action_at),
     lastUpdatedAt: r.updated_at,
@@ -216,7 +216,10 @@ export function listLeadsPage(params: ListParams): { items: LeadRecord[]; total:
     .prepare(
       `SELECT * FROM leads ${where}
        ORDER BY 
-         CASE WHEN created_at IS NOT NULL AND created_at != '' THEN 0 ELSE 1 END,
+         CASE 
+           WHEN created_at IS NOT NULL AND created_at LIKE '%/%' AND created_at LIKE '%:%' THEN 0 
+           ELSE 1 
+         END ASC,
          created_at DESC, 
          source_row DESC
        LIMIT ? OFFSET ?`

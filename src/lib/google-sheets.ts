@@ -127,6 +127,11 @@ function parseGrid(
     const row = values[r] ?? [];
     const raw = mapRowWithConfiguration(row, config);
     const lead = toStandardLead(raw);
+    
+    // CRITICAL: Only pull data if Column W (receivedAt) has a timestamp.
+    // If Column W is empty, skip this row entirely.
+    if (!raw.receivedAtRaw || !raw.receivedAtRaw.trim()) continue;
+
     if (rowLooksEmptyDynamic(lead) || !normalizePhoneKey(lead.phoneNumber)) continue;
     const initialStatus = resolveInitialStatus(raw.existingStatusRaw, raw.statusColumnMapped);
     const sheetRow = r + 1;

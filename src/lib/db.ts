@@ -216,7 +216,7 @@ export function listLeadsPage(params: ListParams): { items: LeadRecord[]; total:
     .prepare(
       `SELECT * FROM leads ${where}
        ORDER BY 
-         CASE WHEN created_at IS NOT NULL AND created_at != '' AND created_at NOT LIKE '%T%' THEN 0 ELSE 1 END,
+         CASE WHEN created_at IS NOT NULL AND created_at != '' THEN 0 ELSE 1 END,
          created_at DESC, 
          source_row DESC
        LIMIT ? OFFSET ?`
@@ -316,8 +316,8 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
     // Check if this EXACT phone + service combination already exists
     const existing = d.prepare("SELECT id FROM leads WHERE phone_key = ?").get(uniqueEntryKey) as { id: string } | undefined;
     
-    // Use source createdAt if provided, else use now
-    const leadCreatedAt = r.createdAt && r.createdAt.trim() ? r.createdAt.trim() : now;
+    // Use source createdAt if provided, else use empty string
+    const leadCreatedAt = r.createdAt && r.createdAt.trim() ? r.createdAt.trim() : "";
 
     if (existing) {
       // If it exists, update the data and FORCE update created_at if the new one is valid
@@ -327,14 +327,14 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
           campaign_data = ?, 
           full_name = ?, 
           source_row = ?,
-          created_at = CASE WHEN (? IS NOT NULL AND ? != '') THEN ? ELSE created_at END,
+          created_at = ?,
           updated_at = ?
         WHERE id = ?
       `).run(
         r.lead.campaignData, 
         r.lead.fullName, 
         r.sheetRow, 
-        leadCreatedAt, leadCreatedAt, leadCreatedAt, 
+        leadCreatedAt, 
         now, 
         existing.id
       );

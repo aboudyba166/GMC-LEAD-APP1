@@ -158,19 +158,21 @@ export function LeadCommandCenter() {
     if (!isBackground) setSyncing(true);
     if (!isBackground) setBanner(null);
     try {
-      // First try to load configurations from the server
+      // ALWAYS load configurations from the server first
       let configurations = [];
       try {
         const connRes = await fetch("/api/admin/connections");
         const connData = await connRes.json();
         if (connRes.ok && connData.connections?.length > 0) {
           configurations = connData.connections;
+          // Sync local storage with server data for redundancy
+          saveSheetConfigurations(configurations);
         }
       } catch (e) {
         console.warn("Failed to load connections from server, falling back to local storage", e);
       }
 
-      // Fallback to local storage if server is empty
+      // Fallback to local storage ONLY if server is unreachable or empty
       if (configurations.length === 0) {
         configurations = loadSheetConfigurations();
       }
@@ -178,7 +180,7 @@ export function LeadCommandCenter() {
       if (configurations.length === 0) {
         if (!isBackground) {
           setBanner(
-            "No sheet connections are saved in this browser. Open Admin, add a Google Sheet, click Save, then try Manual Sync again."
+            "No sheet connections found. Please go to Admin, add your Google Sheets, and click Save."
           );
         }
         return;

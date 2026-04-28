@@ -317,7 +317,7 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
     const existing = d.prepare("SELECT id FROM leads WHERE phone_key = ?").get(uniqueEntryKey) as { id: string } | undefined;
     
     // Use source createdAt if provided, else use now
-    const leadCreatedAt = r.createdAt && r.createdAt.trim() ? r.createdAt : now;
+    const leadCreatedAt = r.createdAt && r.createdAt.trim() ? r.createdAt.trim() : now;
 
     if (existing) {
       // If it exists, update the data and FORCE update created_at if the new one is valid

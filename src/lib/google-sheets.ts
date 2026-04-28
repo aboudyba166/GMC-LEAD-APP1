@@ -134,29 +134,11 @@ function parseGrid(
     // Parse receivedAt from sheet if available, otherwise use empty string
     let createdAt = "";
     if (raw.receivedAtRaw && raw.receivedAtRaw.trim()) {
-      try {
-        // Handle Google Sheets date format (often MM/DD/YYYY or DD/MM/YYYY)
-        const parsed = new Date(raw.receivedAtRaw);
-        if (!isNaN(parsed.getTime())) {
-          createdAt = parsed.toISOString();
-        }
-      } catch {
-        /* fallback to empty */
-      }
+      createdAt = raw.receivedAtRaw.trim();
     }
 
     // Use Phone + Service + Row as the unique key to allow same person/service on different rows
     const k = `${normalizePhoneKey(lead.phoneNumber)}_${(lead.serviceRequired || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '')}_${sheetRow}`;
-    
-    // Ensure createdAt is valid for sorting. If it's a raw date string from Google Sheets, 
-    // we want to make sure it's in a format SQLite's datetime() can handle.
-    let finalCreatedAt = createdAt;
-    if (raw.receivedAtRaw && raw.receivedAtRaw.trim()) {
-      const parsed = new Date(raw.receivedAtRaw);
-      if (!isNaN(parsed.getTime())) {
-        finalCreatedAt = parsed.toISOString();
-      }
-    }
     
     outRows.push({
       lead,
@@ -164,7 +146,7 @@ function parseGrid(
       sourceLabel: config.name || config.id,
       initialStatus,
       sheetRow,
-      createdAt: finalCreatedAt,
+      createdAt,
     });
   }
   return outRows;

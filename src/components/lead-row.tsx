@@ -61,6 +61,12 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
     }
 
     const updateTimer = () => {
+      // Only run timer if createdAt is a valid ISO string (contains 'T')
+      if (!lead.createdAt || !lead.createdAt.includes("T")) {
+        setTimeElapsed("");
+        return;
+      }
+      
       const start = new Date(lead.createdAt).getTime();
       const now = new Date().getTime();
       const diff = Math.floor((now - start) / 1000); // seconds
@@ -379,7 +385,9 @@ export function LeadRow({ lead, onUpdate, onCopy, copyId, currentAgent }: Props)
       </td>
       <td className="whitespace-nowrap px-2 py-2 text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
         <div className="flex flex-col">
-          <span>{fmtShort(lead.lastUpdatedAt)}</span>
+          <span className={cn(lead.createdAt && !lead.createdAt.includes("T") && "text-sky-600 font-bold dark:text-sky-400")}>
+            {lead.createdAt && !lead.createdAt.includes("T") ? lead.createdAt : fmtShort(lead.createdAt)}
+          </span>
           {lead.lastActionAt && (
             <span className="text-[9px] text-zinc-400 italic">
               Acted: {fmtShort(lead.lastActionAt)}

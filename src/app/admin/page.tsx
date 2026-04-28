@@ -383,8 +383,9 @@ export default function AdminPage() {
                 <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
+                    disabled={isLocked}
                     onClick={() => remove(index)}
-                    className="rounded p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                    className="rounded p-1.5 text-rose-600 hover:bg-rose-50 disabled:opacity-40 dark:hover:bg-rose-950/40"
                     title="Remove this connection"
                   >
                     <Trash2 className="h-4 w-4" />

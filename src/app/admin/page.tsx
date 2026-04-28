@@ -248,7 +248,7 @@ export default function AdminPage() {
           const config: SheetConfiguration = {
             id: nanoid(),
             name: cleanValues[0] || `Connection ${i}`,
-            spreadsheetId: cleanValues[1] || "",
+            spreadsheetId: normalizeSpreadsheetId(cleanValues[1] || ""),
             tabName: cleanValues[2] || "Sheet1",
             sheetGid: cleanValues[3] ? Number(cleanValues[3]) : undefined,
             columns: {

@@ -216,8 +216,9 @@ export function listLeadsPage(params: ListParams): { items: LeadRecord[]; total:
     .prepare(
       `SELECT * FROM leads ${where}
        ORDER BY 
-         updated_at DESC,
-         id DESC
+         CASE WHEN created_at IS NOT NULL AND created_at != '' THEN 0 ELSE 1 END ASC,
+         created_at DESC,
+         source_row DESC
        LIMIT ? OFFSET ?`
     )
     .all(...args, pageSize, offset) as Row[];

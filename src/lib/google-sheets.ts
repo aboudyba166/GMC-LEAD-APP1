@@ -48,23 +48,8 @@ const COL_BUFFER = 2;
  * Avoids fixed `A1:ZZ5000` which the API may reject (400 "Unable to parse range").
  */
 function a1RangeForConfig(tabTitle: string, config: SheetConfiguration): string {
-  const c = config.columns;
-  const letters = [
-    c.campaign,
-    c.fullName,
-    c.phone,
-    c.serviceRequired,
-    c.existingStatus ?? "",
-  ]
-    .map((s) => String(s ?? "").trim())
-    .filter(Boolean);
-
-  let maxIdx0 = 0;
-  for (const L of letters) {
-    maxIdx0 = Math.max(maxIdx0, columnLetterToIndex(L));
-  }
-  const endIdx0 = maxIdx0 + COL_BUFFER;
-  const endCol = indexToColumnLetter0(endIdx0);
+  // We want to scan the entire sheet up to Column W (index 22) to find timestamps
+  const endCol = "W";
   const safe = tabTitle.replace(/'/g, "''");
   const unquoted = /^[A-Za-z0-9_]+$/.test(tabTitle);
   const sheetRef = unquoted ? safe : `'${safe}'`;

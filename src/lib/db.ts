@@ -216,12 +216,8 @@ export function listLeadsPage(params: ListParams): { items: LeadRecord[]; total:
     .prepare(
       `SELECT * FROM leads ${where}
        ORDER BY 
-         CASE 
-           WHEN created_at IS NOT NULL AND created_at LIKE '%/%' AND created_at LIKE '%:%' THEN 0 
-           ELSE 1 
-         END ASC,
-         source_row DESC,
-         created_at DESC
+         updated_at DESC,
+         id DESC
        LIMIT ? OFFSET ?`
     )
     .all(...args, pageSize, offset) as Row[];

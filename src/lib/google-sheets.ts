@@ -128,7 +128,9 @@ function parseGrid(
     }
 
     // Use Phone + Service + Row as the unique key to allow same person/service on different rows
-    const k = `${normalizePhoneKey(lead.phoneNumber)}_${(lead.serviceRequired || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '')}_${sheetRow}`;
+    const phoneKey = normalizePhoneKey(lead.phoneNumber) || 'unknown';
+    const serviceKey = (lead.serviceRequired || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+    const k = `${phoneKey}_${serviceKey}_${sheetRow}`;
     
     outRows.push({
       lead,

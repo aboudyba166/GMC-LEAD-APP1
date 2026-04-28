@@ -216,7 +216,7 @@ export function listLeadsPage(params: ListParams): { items: LeadRecord[]; total:
     .prepare(
       `SELECT * FROM leads ${where}
        ORDER BY 
-         CASE WHEN created_at IS NOT NULL AND created_at != '' THEN 0 ELSE 1 END,
+         CASE WHEN created_at IS NOT NULL AND created_at != '' AND created_at NOT LIKE '%T%' THEN 0 ELSE 1 END,
          created_at DESC, 
          source_row DESC
        LIMIT ? OFFSET ?`
@@ -320,17 +320,24 @@ export function runSyncIngestion(rows: SyncIngestionRow[], skipNotifications = f
     const leadCreatedAt = r.createdAt && r.createdAt.trim() ? r.createdAt : now;
 
     if (existing) {
-      // If it exists, just update the data (like campaign or row number) but don't create a new lead
-      // IMPORTANT: We update created_at only if the new one is valid and the existing one is empty or 'now'
+      // If it exists, update the data and FORCE update created_at if the new one is valid
+      // This ensures Column W always wins for sorting.
       d.prepare(`
         UPDATE leads SET 
           campaign_data = ?, 
           full_name = ?, 
           source_row = ?,
-          created_at = CASE WHEN (created_at IS NULL OR created_at = '' OR created_at LIKE '%T%') AND (? IS NOT NULL AND ? != '') THEN ? ELSE created_at END,
+          created_at = CASE WHEN (? IS NOT NULL AND ? != '') THEN ? ELSE created_at END,
           updated_at = ?
         WHERE id = ?
-      `).run(r.lead.campaignData, r.lead.fullName, r.sheetRow, leadCreatedAt, leadCreatedAt, leadCreatedAt, now, existing.id);
+      `).run(
+        r.lead.campaignData, 
+        r.lead.fullName, 
+        r.sheetRow, 
+        leadCreatedAt, leadCreatedAt, leadCreatedAt, 
+        now, 
+        existing.id
+      );
       merged++;
       continue;
     }

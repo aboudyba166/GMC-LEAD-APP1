@@ -32,10 +32,11 @@ export function saveSheetConfigurations(configs: SheetConfiguration[]): void {
     localStorage.removeItem(SHEET_CONFIG_STORAGE_KEY_LEGACY_V1);
     localStorage.removeItem(SHEET_CONFIG_STORAGE_KEY_LEGACY_V2);
     localStorage.setItem(SHEET_CONFIG_LAST_SAVED_AT_KEY, new Date().toISOString());
-  } catch {
-    /* ignore */
+    // Explicitly stringify and set to ensure it overwrites correctly
+    localStorage.setItem(SHEET_CONFIG_STORAGE_KEY, JSON.stringify(configs));
+  } catch (e) {
+    console.error("Failed to save to local storage", e);
   }
-  localStorage.setItem(SHEET_CONFIG_STORAGE_KEY, JSON.stringify(configs));
 }
 
 /** Remove v1/v2 keys so only v3 is used. */
